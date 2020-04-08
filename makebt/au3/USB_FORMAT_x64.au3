@@ -2,9 +2,9 @@
 #cs ----------------------------------------------------------------------------
 
 AutoIt Version: 3.3.14.5
- Author:        WIMB  -  March 12, 2020
+ Author:        WIMB  -  April 07, 2020
 
- Program:       USB_FORMAT_x64.exe - Version 3.0 in rule 100
+ Program:       USB_FORMAT_x64.exe - Version 3.2 in rule 100
 
  Script Function
 	can be used to Format USB Drive for Booting with Windows Boot Manager Menu in BIOS or UEFI mode and
@@ -48,8 +48,8 @@ Global $DriveType="Fixed", $usbfix=0, $bcdedit="", $refind, $Combo_EFI, $WinDir_
 Global $Target_Device, $Target_Type, $FormUSB, $Combo_2nd, $f32_size="10240", $ntfs_size="", $NTFS_Drive = ""
 Global $inst_disk="", $inst_part="", $disk_size="", $vol_size="", $disk_GB = 15, $dp_finish = 0
 
-Global $str = "", $bt_files[8] = ["\makebt\listusbdrives\ListUsbDrives.exe", "\makebt\grldr.mbr", "\makebt\grldr", "\makebt\menu.lst", _
-"\makebt\menu_Linux.lst", "\UEFI_MAN\efi", "\UEFI_MAN\efi_mint", "\makebt\Linux_ISO_Files.txt"]
+Global $str = "", $bt_files[9] = ["\makebt\listusbdrives\ListUsbDrives.exe", "\makebt\grldr.mbr", "\makebt\grldr", "\makebt\menu.lst", _
+"\makebt\menu_Linux.lst", "\UEFI_MAN\efi", "\UEFI_MAN\efi_mint", "\makebt\Linux_ISO_Files.txt", "\makebt\grub.exe"]
 
 ;~ 	If @OSArch <> "X86" Then
 ;~ 	   MsgBox(48, "ERROR - Environment", "In x64 environment use USB_FORMAT_x64.exe ")
@@ -97,7 +97,7 @@ EndIf
 $hGuiParent = GUICreate(" USB_FORMAT x64 - Tool to Make Bootable USB Drive", 400, 430, -1, -1, BitXOR($GUI_SS_DEFAULT_GUI, $WS_MINIMIZEBOX))
 GUISetOnEvent($GUI_EVENT_CLOSE, "_Quit")
 
-GUICtrlCreateGroup("USB FORMAT - Version 3.0 ", 18, 10, 364, 235)
+GUICtrlCreateGroup("USB FORMAT - Version 3.2 ", 18, 10, 364, 235)
 
 GUICtrlCreateLabel( "1 - Format USB Drive with MBR and 2 Partitions FAT32 + NTFS", 32, 37)
 GUICtrlCreateLabel( "2 - UEFI_MULTI can Add VHD or PE WIM File Booting from RAMDISK", 32, 67)
@@ -822,9 +822,16 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 		EndIf
 		If GUICtrlRead($Combo_EFI) = "Grub 2" Then
 			DirCopy(@ScriptDir & "\UEFI_MAN\efi_mint", $TargetDrive & "\efi", 1)
+			If Not FileExists($TargetDrive & "\grubfm.iso") And FileExists(@ScriptDir & "\UEFI_MAN\grubfm.iso") Then FileCopy(@ScriptDir & "\UEFI_MAN\grubfm.iso", $TargetDrive & "\", 1)
+			If FileExists(@ScriptDir & "\UEFI_MAN\efi\boot\grubfmx64.efi") Then FileCopy(@ScriptDir & "\UEFI_MAN\efi\boot\grubfmx64.efi", $TargetDrive & "\efi\boot\", 1)
+			If FileExists(@ScriptDir & "\UEFI_MAN\efi\boot\grubfmia32.efi") Then FileCopy(@ScriptDir & "\UEFI_MAN\efi\boot\grubfmia32.efi", $TargetDrive & "\efi\boot\", 1)
 		Else
 			DirCopy(@ScriptDir & "\UEFI_MAN\efi", $TargetDrive & "\efi", 1)
+			If FileExists(@ScriptDir & "\UEFI_MAN\grub2") Then
+				DirCopy(@ScriptDir & "\UEFI_MAN\grub2", $TargetDrive & "\grub2", 1)
+			EndIf
 			If FileExists(@ScriptDir & "\UEFI_MAN\ENROLL_THIS_KEY_IN_MOKMANAGER.cer") Then FileCopy(@ScriptDir & "\UEFI_MAN\ENROLL_THIS_KEY_IN_MOKMANAGER.cer", $TargetDrive & "\", 1)
+			If Not FileExists($TargetDrive & "\grubfm.iso") And FileExists(@ScriptDir & "\UEFI_MAN\grubfm.iso") Then FileCopy(@ScriptDir & "\UEFI_MAN\grubfm.iso", $TargetDrive & "\", 1)
 		EndIf
 		If Not FileExists($TargetDrive & "\boot\grub\grub.cfg") Then
 			If FileExists($TargetDrive & "\AIO\grub\grub.cfg") And Not FileExists($TargetDrive & "\boot\grub\Main.cfg") Then
@@ -838,8 +845,8 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 					FileCopy(@ScriptDir & "\UEFI_MAN\efi_mint\boot\grub.cfg", $TargetDrive & "\boot\grub\", 8)
 					FileCopy(@ScriptDir & "\UEFI_MAN\efi_mint\boot\grub_Linux.cfg", $TargetDrive & "\boot\grub\", 8)
 				Else
-					FileCopy(@ScriptDir & "\UEFI_MAN\efi\boot\grub.cfg", $TargetDrive & "\boot\grub\", 8)
-					FileCopy(@ScriptDir & "\UEFI_MAN\efi\boot\grub_Linux.cfg", $TargetDrive & "\boot\grub\", 8)
+					If FileExists(@ScriptDir & "\UEFI_MAN\efi\boot\grub.cfg") Then FileCopy(@ScriptDir & "\UEFI_MAN\efi\boot\grub.cfg", $TargetDrive & "\boot\grub\", 8)
+					If FileExists(@ScriptDir & "\UEFI_MAN\efi\boot\grub_Linux.cfg") Then FileCopy(@ScriptDir & "\UEFI_MAN\efi\boot\grub_Linux.cfg", $TargetDrive & "\boot\grub\", 8)
 				EndIf
 			EndIf
 		Else
@@ -851,8 +858,8 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 					FileCopy(@ScriptDir & "\UEFI_MAN\efi_mint\boot\grub.cfg", $TargetDrive & "\boot\grub\", 1)
 					FileCopy(@ScriptDir & "\UEFI_MAN\efi_mint\boot\grub_Linux.cfg", $TargetDrive & "\boot\grub\", 1)
 				Else
-					FileCopy(@ScriptDir & "\UEFI_MAN\efi\boot\grub.cfg", $TargetDrive & "\boot\grub\", 1)
-					FileCopy(@ScriptDir & "\UEFI_MAN\efi\boot\grub_Linux.cfg", $TargetDrive & "\boot\grub\", 1)
+					If FileExists(@ScriptDir & "\UEFI_MAN\efi\boot\grub.cfg") Then FileCopy(@ScriptDir & "\UEFI_MAN\efi\boot\grub.cfg", $TargetDrive & "\boot\grub\", 1)
+					If FileExists(@ScriptDir & "\UEFI_MAN\efi\boot\grub_Linux.cfg") Then FileCopy(@ScriptDir & "\UEFI_MAN\efi\boot\grub_Linux.cfg", $TargetDrive & "\boot\grub\", 1)
 				EndIf
 			EndIf
 		EndIf
@@ -863,14 +870,19 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 		If FileExists($TargetDrive & "\AIO\grub\grub2win") Then
 			_bcd_grub2()
 		EndIf
+		If FileExists($TargetDrive & "\grub2\g2bootmgr\gnugrub.kernel.bios") Then
+			_bcd_grub2win()
+		EndIf
 	Else
 		GUICtrlSetState($refind, $GUI_UNCHECKED + $GUI_DISABLE)
 	EndIf
 
 	If GUICtrlRead($Bootmgr_Menu) = $GUI_CHECKED Then
 		If Not FileExists($TargetDrive & "\grldr") Then	FileCopy(@ScriptDir & "\makebt\grldr", $TargetDrive & "\", 1)
+		If Not FileExists($TargetDrive & "\grub.exe") Then FileCopy(@ScriptDir & "\makebt\grub.exe", $TargetDrive & "\", 1)
 		If Not FileExists($TargetDrive & "\menu.lst") Then FileCopy(@ScriptDir & "\makebt\menu.lst", $TargetDrive & "\", 1)
 		If Not FileExists($TargetDrive & "\menu_Linux.lst") Then FileCopy(@ScriptDir & "\makebt\menu_Linux.lst", $TargetDrive & "\", 1)
+		If FileExists(@ScriptDir & "\UEFI_MAN\grubfm.iso") Then FileCopy(@ScriptDir & "\UEFI_MAN\grubfm.iso", $TargetDrive & "\", 1)
 		; make folder images for Linux ISO files
 		If Not FileExists($TargetDrive & "\images") Then DirCreate($TargetDrive & "\images")
 		If Not FileExists($TargetDrive & "\images\Linux_ISO_Files.txt") Then FileCopy(@ScriptDir & "\makebt\Linux_ISO_Files.txt", $TargetDrive & "\images\", 1)
@@ -974,6 +986,51 @@ Func _bcd_grub2()
 	SystemFileRedirect("Off")
 
 EndFunc   ;==> _bcd_grub2
+;===================================================================================================
+Func _bcd_grub2win()
+	Local $file, $line, $store, $guid, $pos1, $pos2
+
+	SystemFileRedirect("On")
+
+	If FileExists(@WindowsDir & "\system32\bcdedit.exe") Then
+		$bcdedit = @WindowsDir & "\system32\bcdedit.exe"
+	Else
+		$bcdedit = ""
+	EndIf
+
+	If FileExists($TargetDrive & "\Boot\BCD") And $bcdedit <> "" Then
+		$store = $TargetDrive & "\Boot\BCD"
+
+	;	_GUICtrlStatusBar_SetText($hStatus," Making  Grub2 Entry in Boot Manager Menu - wait ....", 0)
+
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /create /d " & '"' & "Grub 2 for Windows - Linux ISO" & '"' & " /application bootsector > makebt\bs_temp\bcd_grub2win.txt", @ScriptDir, @SW_HIDE)
+		$file = FileOpen(@ScriptDir & "\makebt\bs_temp\bcd_grub2win.txt", 0)
+		$line = FileReadLine($file)
+		FileClose($file)
+		$pos1 = StringInStr($line, "{")
+		$pos2 = StringInStr($line, "}")
+		If $pos2-$pos1=37 Then
+			$guid = StringMid($line, $pos1, $pos2-$pos1+1)
+			RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+			& $store & " /set " & $guid & " device boot", $TargetDrive & "\", @SW_HIDE)
+			RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+			& $store & " /set " & $guid & " path \grub2\g2bootmgr\gnugrub.kernel.bios", $TargetDrive & "\", @SW_HIDE)
+			RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+			& $store & " /displayorder " & $guid & " /addlast", $TargetDrive & "\", @SW_HIDE)
+;~ 			If $DriveType="Removable" Or $usbfix Then
+;~ 				RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+;~ 				& $store & " /default " & $guid, $TargetDrive & "\", @SW_HIDE)
+;~ 			EndIf
+		EndIf
+	Else
+		MsgBox(48, "CONFIG ERROR Or Missing File", "Unable to Add Grub2Win to Boot Manager Menu" & @CRLF & @CRLF _
+			& " Missing bcdedit.exe Or Boot\BCD file ", 5)
+	EndIf
+
+	SystemFileRedirect("Off")
+
+EndFunc   ;==> _bcd_grub2win
 ;===================================================================================================
 Func _WinLang()
 	If FileExists(@WindowsDir & "\System32\en-US\ieframe.dll.mui") Then $WinLang = "en-US"
