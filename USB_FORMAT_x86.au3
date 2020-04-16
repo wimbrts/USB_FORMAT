@@ -2,9 +2,9 @@
 #cs ----------------------------------------------------------------------------
 
 AutoIt Version: 3.3.14.5
- Author:        WIMB  -  April 07, 2020
+ Author:        WIMB  -  April 15, 2020
 
- Program:       USB_FORMAT_x86.exe - Version 3.2 in rule 100
+ Program:       USB_FORMAT_x86.exe - Version 4.0 in rule 103
 
  Script Function
 	can be used to Format USB Drive for Booting with Windows Boot Manager Menu in BIOS or UEFI mode and
@@ -42,11 +42,14 @@ Opt("TrayIconHide", 1)
 
 ; Setting variables
 Global $TargetDrive="", $ProgressAll, $hStatus, $TargetSize, $TargetFree, $FSvar="", $WinLang = "en-US", $PE_flag = 0
-Global $hGuiParent, $EXIT, $TargetSel, $Target, $BootLoader, $Bootmgr_Menu, $Allow_Fixed_USB, $Reversed_PartLayout
+Global $hGuiParent, $EXIT, $TargetSel, $Target, $BootLoader, $Bootmgr_Menu, $Allow_Fixed_USB, $Reversed_PartLayout, $Add_PE_Menu, $Add_VHD_Menu
 Global $DriveType="Fixed", $usbfix=0, $bcdedit="", $refind, $Combo_EFI, $WinDir_PE="D:\Windows", $BusType = ""
 
 Global $Target_Device, $Target_Type, $FormUSB, $Combo_2nd, $f32_size="10240", $ntfs_size="", $NTFS_Drive = ""
 Global $inst_disk="", $inst_part="", $disk_size="", $vol_size="", $disk_GB = 15, $dp_finish = 0
+
+Global $bcdedit="", $winload = "winload.exe", $bcd_guid_outfile = "makebt\bs_temp\bcd_boot_vhd.txt", $store = "", $WinLang = "en-US", $vhdfile_name = "Win10x64.vhd"
+Global $sdi_guid_outfile = "makebt\bs_temp\sdi_guid.txt"
 
 Global $str = "", $bt_files[9] = ["\makebt\listusbdrives\ListUsbDrives.exe", "\makebt\grldr.mbr", "\makebt\grldr", "\makebt\menu.lst", _
 "\makebt\menu_Linux.lst", "\UEFI_MAN\efi", "\UEFI_MAN\efi_mint", "\makebt\Linux_ISO_Files.txt", "\makebt\grub.exe"]
@@ -97,41 +100,54 @@ EndIf
 $hGuiParent = GUICreate(" USB_FORMAT x86 - Tool to Make Bootable USB Drive", 400, 430, -1, -1, BitXOR($GUI_SS_DEFAULT_GUI, $WS_MINIMIZEBOX))
 GUISetOnEvent($GUI_EVENT_CLOSE, "_Quit")
 
-GUICtrlCreateGroup("USB FORMAT - Version 3.2 ", 18, 10, 364, 235)
+GUICtrlCreateGroup("USB FORMAT - Version 4.0 ", 18, 10, 364, 150)
 
 GUICtrlCreateLabel( "1 - Format USB Drive with MBR and 2 Partitions FAT32 + NTFS", 32, 37)
 GUICtrlCreateLabel( "2 - UEFI_MULTI can Add VHD or PE WIM File Booting from RAMDISK", 32, 67)
 GUICtrlCreateLabel( "3 - Copy Linux ISO files to folder images on FAT32 - boot UEFI Grub2", 32, 97)
 GUICtrlCreateLabel( "4 - USB drive Booting with Boot Manager Menu in BIOS or UEFI Mode", 32, 127)
 
-GUICtrlCreateLabel( "FAT32  Size", 32, 187)
-GUICtrlCreateLabel( "FAT32   MAX = 32 GB   MIN = 1 GB", 180, 187)
+GUICtrlCreateLabel( "FAT32  Size", 32, 182)
+GUICtrlCreateLabel( "FAT32   MAX = 32 GB   MIN = 1 GB", 180, 182)
 
-$Combo_2nd = GUICtrlCreateCombo("", 105, 182, 60, 24, $CBS_DROPDOWNLIST)
+$Combo_2nd = GUICtrlCreateCombo("", 105, 177, 60, 24, $CBS_DROPDOWNLIST)
 GUICtrlSetData($Combo_2nd,"MIN|25 %|50 %|75 %|MAX", "50 %")
 GUICtrlSetTip($Combo_2nd, " Only for Windows 10 and Removable Devices " _
 & @CRLF & " FAT32 MAX = 32 GB   MIN = 1 GB   Rest = NTFS")
 
-$refind = GUICtrlCreateCheckbox("", 224, 213, 17, 17)
+$refind = GUICtrlCreateCheckbox("", 224, 210, 17, 17)
 GUICtrlSetTip($refind, " Add Grub2 needed to boot Linux ISO in UEFI mode" & @CRLF _
-& " UEFI Mult-Boot Linux ISO + Windows 8 / 10 VHD + PE WIM " & @CRLF _
-& " Setting Other is used for support of a1ive Grub2 File Manager ")
-GUICtrlCreateLabel( "EFI Mgr", 328, 215)
-$Combo_EFI = GUICtrlCreateCombo("", 248, 212, 70, 24, $CBS_DROPDOWNLIST)
+& " Setting Grub2 - Only for some Linux ISO Files in images folder " & @CRLF _
+& " Setting Other - use Addon with a1ive Grub2 File Manager " & @CRLF _
+& " and Grub2 Live ISO Multiboot for All Linux in iso folder ")
+GUICtrlCreateLabel( "EFI Mgr", 328, 212)
+$Combo_EFI = GUICtrlCreateCombo("", 248, 209, 70, 24, $CBS_DROPDOWNLIST)
 GUICtrlSetData($Combo_EFI,"Grub 2|Other", "Grub 2")
 GUICtrlSetTip($Combo_EFI, " Add Grub2 needed to boot Linux ISO in UEFI mode" & @CRLF _
-& " UEFI Mult-Boot Linux ISO + Windows 8 / 10 VHD + PE WIM " & @CRLF _
-& " Setting Other is used for support of a1ive Grub2 File Manager ")
+& " Setting Grub2 - Only for some Linux ISO Files in images folder " & @CRLF _
+& " Setting Other - use Addon with a1ive Grub2 File Manager " & @CRLF _
+& " and Grub2 Live ISO Multiboot for All Linux in iso folder ")
 
-$Reversed_PartLayout = GUICtrlCreateCheckbox("", 32, 213, 17, 17)
+$Reversed_PartLayout = GUICtrlCreateCheckbox("", 32, 210, 17, 17)
 GUICtrlSetTip($Reversed_PartLayout, " Reversed Partition Layout - Max Disk Size 128 GB " _
 & @CRLF & " 1 = NTFS  and  2 = FAT32 - Only for Windows 10")
-GUICtrlCreateLabel( "Reversed Partition Layout", 52, 215)
+GUICtrlCreateLabel( "Reversed Partition Layout", 52, 213)
 
-$Allow_Fixed_USB = GUICtrlCreateCheckbox("", 32, 260, 17, 17)
+$Allow_Fixed_USB = GUICtrlCreateCheckbox("", 32, 235, 17, 17)
 GUICtrlSetTip($Allow_Fixed_USB, " Allow Fixed USB Drives " _
 & @CRLF & " WARNING - All Content of USB Harddisk get Lost ")
-GUICtrlCreateLabel( "Allow Fixed USB Drives", 52, 262)
+GUICtrlCreateLabel( "Allow Fixed USB Drives", 52, 237)
+
+$Add_VHD_Menu = GUICtrlCreateCheckbox("", 224, 235, 17, 17)
+GUICtrlSetTip($Add_VHD_Menu, " Add VHD file Win10x64.vhd to Windows Boot Manager Menu " _
+& @CRLF & " After Format Copy your Win10x64.vhd to Root of USB NTFS Drive " _
+& @CRLF & " VHD FILEDISK Entry Only made for VHD on Fixed USB NTFS Drive ")
+GUICtrlCreateLabel( "Add VHD to Boot Manager", 248, 237)
+
+$Add_PE_Menu = GUICtrlCreateCheckbox("", 32, 260, 17, 17)
+GUICtrlSetTip($Add_PE_Menu, " Add PE file boot.wim to Windows Boot Manager Menu " _
+& @CRLF & " After Format Copy your boot.wim to Root of USB Boot Drive ")
+GUICtrlCreateLabel( "Add PE to Boot Manager", 52, 262)
 
 $Bootmgr_Menu = GUICtrlCreateCheckbox("", 224, 260, 17, 17)
 GUICtrlSetTip($Bootmgr_Menu, " Make USB Drive bootable with Windows Boot Manager and " _
@@ -172,10 +188,12 @@ DisableMenus(1)
 If @OSVersion = "WIN_10" Then
 	GUICtrlSetState($Combo_2nd, $GUI_ENABLE)
 	GUICtrlSetState($Reversed_PartLayout, $GUI_ENABLE)
+	GUICtrlSetState($Add_VHD_Menu, $GUI_ENABLE)
 Else
 	GUICtrlSetData($Combo_2nd,"MIN|25 %|50 %|75 %|MAX", "MAX")
 	GUICtrlSetState($Combo_2nd, $GUI_DISABLE)
 	GUICtrlSetState($Reversed_PartLayout, $GUI_DISABLE)
+	GUICtrlSetState($Add_VHD_Menu, $GUI_DISABLE)
 EndIf
 
 GUICtrlSetState($refind, $GUI_UNCHECKED + $GUI_ENABLE)
@@ -185,6 +203,7 @@ GUICtrlSetState($FormUSB, $GUI_DISABLE)
 GUICtrlSetState($EXIT, $GUI_ENABLE)
 
 GUICtrlSetState($Allow_Fixed_USB, $GUI_ENABLE)
+GUICtrlSetState($Add_PE_Menu, $GUI_ENABLE + $GUI_CHECKED)
 GUICtrlSetState($Bootmgr_Menu, $GUI_ENABLE + $GUI_CHECKED)
 
 GUISetState(@SW_SHOW)
@@ -489,18 +508,27 @@ Func DisableMenus($endis)
 	If @OSVersion = "WIN_10" Then
 		GUICtrlSetState($Combo_2nd, $endis)
 		GUICtrlSetState($Reversed_PartLayout, $endis)
+		If $DriveType = "Removable" Then
+			GUICtrlSetState($Add_VHD_Menu, $GUI_DISABLE + $GUI_UNCHECKED)
+		Else
+			GUICtrlSetState($Add_VHD_Menu, $endis)
+		EndIf
 	Else
 		GUICtrlSetState($Combo_2nd, $GUI_DISABLE)
 		GUICtrlSetState($Reversed_PartLayout, $GUI_DISABLE)
+		GUICtrlSetState($Add_VHD_Menu, $GUI_DISABLE + $GUI_UNCHECKED)
 	EndIf
 	GUICtrlSetState($FormUSB, $GUI_DISABLE)
 	GUICtrlSetState($EXIT, $endis)
 	GUICtrlSetState($Combo_EFI, $endis)
 	If GUICtrlRead($Bootmgr_Menu) = $GUI_UNCHECKED Then
 		GUICtrlSetState($refind, $GUI_UNCHECKED)
+		GUICtrlSetState($Add_VHD_Menu, $GUI_UNCHECKED)
+		GUICtrlSetState($Add_PE_Menu, $GUI_UNCHECKED)
 	EndIf
 	GUICtrlSetState($refind, $endis)
 	GUICtrlSetState($Allow_Fixed_USB, $endis)
+	GUICtrlSetState($Add_PE_Menu, $endis)
 	GUICtrlSetState($Bootmgr_Menu, $endis)
 
 	GUICtrlSetState($TargetSel, $endis)
@@ -516,6 +544,8 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 
 	If GUICtrlRead($Bootmgr_Menu) = $GUI_UNCHECKED Then
 		GUICtrlSetState($refind, $GUI_UNCHECKED)
+		GUICtrlSetState($Add_VHD_Menu, $GUI_UNCHECKED)
+		GUICtrlSetState($Add_PE_Menu, $GUI_UNCHECKED)
 	EndIf
 
 	$DriveType=DriveGetType($TargetDrive)
@@ -731,7 +761,7 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 
 	_ListUsb()
 
-	GUICtrlSetData($ProgressAll, 70)
+	GUICtrlSetData($ProgressAll, 60)
 	_GUICtrlStatusBar_SetText($hStatus," DiskPart has finished - Wait ... ", 0)
 	$FSvar = DriveGetFileSystem($TargetDrive)
 	GUICtrlSetData($Target, $TargetDrive)
@@ -750,7 +780,7 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 
 	_WinLang()
 
-	Sleep(2000)
+	Sleep(1000)
 
 	If $TargetDrive <> "" And GUICtrlRead($Bootmgr_Menu) = $GUI_CHECKED Then
 		; SystemFileRedirect("On")
@@ -770,21 +800,8 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 		FileSetAttrib($TargetDrive & "\bootmgr", "-RSH")
 		Sleep(2000)
 		; to get Win 8 Boot Manager Menu displayed and waiting for User Selection
-		If FileExists($TargetDrive & "\EFI\Microsoft\Boot\BCD") And FileExists(@WindowsDir & "\system32\bcdedit.exe") Then
-			RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdedit.exe" & " /store " _
-			& $TargetDrive & "\EFI\Microsoft\Boot\BCD" & " /set {default} bootmenupolicy legacy", $TargetDrive & "\", @SW_HIDE)
-			RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdedit.exe" & " /store " _
-			& $TargetDrive & "\EFI\Microsoft\Boot\BCD" & " /set {default} detecthal on", $TargetDrive & "\", @SW_HIDE)
-			If FileExists(@WindowsDir & "\SysWOW64") Then
-				RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdedit.exe" & " /store " _
-				& $TargetDrive & "\EFI\Microsoft\Boot\BCD" & " /set {default} testsigning on", $TargetDrive & "\", @SW_HIDE)
-				RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdedit.exe" & " /store " _
-				& $TargetDrive & "\EFI\Microsoft\Boot\BCD" & " /set {bootmgr} nointegritychecks on", $TargetDrive & "\", @SW_HIDE)
-			EndIf
-			RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdedit.exe" & " /store " _
-			& $TargetDrive & "\EFI\Microsoft\Boot\BCD" & " /bootems {emssettings} ON", $TargetDrive & "\", @SW_HIDE)
-		EndIf
 		If FileExists($TargetDrive & "\Boot\BCD") And FileExists(@WindowsDir & "\system32\bcdedit.exe") Then
+			_GUICtrlStatusBar_SetText($hStatus," Modify Boot\BCD Boot Manager Menu on USB " & $TargetDrive & " - wait .... ", 0)
 			RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdedit.exe" & " /store " _
 			& $TargetDrive & "\Boot\BCD" & " /set {default} bootmenupolicy legacy", $TargetDrive & "\", @SW_HIDE)
 			RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdedit.exe" & " /store " _
@@ -797,7 +814,60 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 			EndIf
 			RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdedit.exe" & " /store " _
 			& $TargetDrive & "\Boot\BCD" & " /bootems {emssettings} ON", $TargetDrive & "\", @SW_HIDE)
+			If Not FileExists($TargetDrive & "\Boot\boot.sdi") And FileExists(@WindowsDir & "\Boot\DVD\PCAT\boot.sdi") Then
+				FileCopy(@WindowsDir & "\Boot\DVD\PCAT\boot.sdi", $TargetDrive & "\Boot\", 1)
+			EndIf
+			If Not FileExists($TargetDrive & "\Boot\bootvhd.dll") And FileExists(@WindowsDir & "\Boot\PCAT\bootvhd.dll") Then
+				FileCopy(@WindowsDir & "\Boot\PCAT\bootvhd.dll", $TargetDrive & "\Boot\", 1)
+			EndIf
+			If GUICtrlRead($Add_VHD_Menu) = $GUI_CHECKED Then
+				$store = $TargetDrive & "\Boot\BCD"
+				$winload = "winload.exe"
+				$bcd_guid_outfile = "makebt\bs_temp\bcd_boot_usb.txt"
+				_BCD_VHD_Entry()
+			EndIf
+
+			If GUICtrlRead($Add_PE_Menu) = $GUI_CHECKED Then
+				$store = $TargetDrive & "\Boot\BCD"
+				$sdi_guid_outfile = "makebt\bs_temp\sdi_guid.txt"
+				$bcd_guid_outfile = "makebt\bs_temp\pe_guid.txt"
+				_pe_boot_menu()
+			EndIf
 		EndIf
+
+		GUICtrlSetData($ProgressAll, 70)
+		; and for efi
+		If FileExists($TargetDrive & "\EFI\Microsoft\Boot\BCD") And FileExists(@WindowsDir & "\system32\bcdedit.exe") Then
+			_GUICtrlStatusBar_SetText($hStatus," Modify EFI BCD Boot Manager Menu on USB " & $TargetDrive & " - wait .... ", 0)
+			RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdedit.exe" & " /store " _
+			& $TargetDrive & "\EFI\Microsoft\Boot\BCD" & " /set {default} bootmenupolicy legacy", $TargetDrive & "\", @SW_HIDE)
+			RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdedit.exe" & " /store " _
+			& $TargetDrive & "\EFI\Microsoft\Boot\BCD" & " /set {default} detecthal on", $TargetDrive & "\", @SW_HIDE)
+			If FileExists(@WindowsDir & "\SysWOW64") Then
+				RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdedit.exe" & " /store " _
+				& $TargetDrive & "\EFI\Microsoft\Boot\BCD" & " /set {default} testsigning on", $TargetDrive & "\", @SW_HIDE)
+				RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdedit.exe" & " /store " _
+				& $TargetDrive & "\EFI\Microsoft\Boot\BCD" & " /set {bootmgr} nointegritychecks on", $TargetDrive & "\", @SW_HIDE)
+			EndIf
+			RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdedit.exe" & " /store " _
+			& $TargetDrive & "\EFI\Microsoft\Boot\BCD" & " /bootems {emssettings} ON", $TargetDrive & "\", @SW_HIDE)
+
+			If GUICtrlRead($Add_VHD_Menu) = $GUI_CHECKED Then
+				; _GUICtrlStatusBar_SetText($hStatus," Add VHD entry to BCD on Boot Drive " & $TargetDrive, 0)
+				$store = $TargetDrive & "\efi\Microsoft\Boot\BCD"
+				$winload = "winload.efi"
+				$bcd_guid_outfile = "makebt\bs_temp\bcd_efi_usb.txt"
+				_BCD_VHD_Entry()
+			EndIf
+
+			If GUICtrlRead($Add_PE_Menu) = $GUI_CHECKED Then
+				$store = $TargetDrive & "\efi\microsoft\boot\BCD"
+				$sdi_guid_outfile = "makebt\bs_temp\efi_sdi_guid.txt"
+				$bcd_guid_outfile = "makebt\bs_temp\efi_pe_guid.txt"
+				_pe_boot_menu()
+			EndIf
+		EndIf
+
 		; SystemFileRedirect("Off")
 	EndIf
 
@@ -805,7 +875,6 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 
 	GUICtrlSetData($ProgressAll, 80)
 	If $DriveType="Removable" Or $usbfix And GUICtrlRead($refind) = $GUI_CHECKED Then
-		_GUICtrlStatusBar_SetText($hStatus," Adding Grub2 Boot Manager - wait .... ", 0)
 		If FileExists($TargetDrive & "\efi\boot\bootx64.efi") And Not FileExists($TargetDrive & "\efi\boot\org-bootx64.efi") Then
 			FileMove($TargetDrive & "\efi\boot\bootx64.efi", $TargetDrive & "\efi\boot\org-bootx64.efi", 1)
 		EndIf
@@ -821,17 +890,20 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 			FileMove($TargetDrive & "\efi\boot\grub.cfg", $TargetDrive & "\efi\boot\org-grub.cfg", 1)
 		EndIf
 		If GUICtrlRead($Combo_EFI) = "Grub 2" Then
+			_GUICtrlStatusBar_SetText($hStatus," Adding Grub2 EFI Manager - wait .... ", 0)
 			DirCopy(@ScriptDir & "\UEFI_MAN\efi_mint", $TargetDrive & "\efi", 1)
 			If Not FileExists($TargetDrive & "\grubfm.iso") And FileExists(@ScriptDir & "\UEFI_MAN\grubfm.iso") Then FileCopy(@ScriptDir & "\UEFI_MAN\grubfm.iso", $TargetDrive & "\", 1)
 			If FileExists(@ScriptDir & "\UEFI_MAN\efi\boot\grubfmx64.efi") Then FileCopy(@ScriptDir & "\UEFI_MAN\efi\boot\grubfmx64.efi", $TargetDrive & "\efi\boot\", 1)
 			If FileExists(@ScriptDir & "\UEFI_MAN\efi\boot\grubfmia32.efi") Then FileCopy(@ScriptDir & "\UEFI_MAN\efi\boot\grubfmia32.efi", $TargetDrive & "\efi\boot\", 1)
 		Else
+			_GUICtrlStatusBar_SetText($hStatus," Adding Other EFI Manager - wait .... ", 0)
 			DirCopy(@ScriptDir & "\UEFI_MAN\efi", $TargetDrive & "\efi", 1)
 			If FileExists(@ScriptDir & "\UEFI_MAN\grub2") Then
 				DirCopy(@ScriptDir & "\UEFI_MAN\grub2", $TargetDrive & "\grub2", 1)
 			EndIf
 			If FileExists(@ScriptDir & "\UEFI_MAN\ENROLL_THIS_KEY_IN_MOKMANAGER.cer") Then FileCopy(@ScriptDir & "\UEFI_MAN\ENROLL_THIS_KEY_IN_MOKMANAGER.cer", $TargetDrive & "\", 1)
 			If Not FileExists($TargetDrive & "\grubfm.iso") And FileExists(@ScriptDir & "\UEFI_MAN\grubfm.iso") Then FileCopy(@ScriptDir & "\UEFI_MAN\grubfm.iso", $TargetDrive & "\", 1)
+			DirCopy(@ScriptDir & "\UEFI_MAN\iso", $TargetDrive & "\iso", 1)
 		EndIf
 		If Not FileExists($TargetDrive & "\boot\grub\grub.cfg") Then
 			If FileExists($TargetDrive & "\AIO\grub\grub.cfg") And Not FileExists($TargetDrive & "\boot\grub\Main.cfg") Then
@@ -863,6 +935,7 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 				EndIf
 			EndIf
 		EndIf
+		GUICtrlSetData($ProgressAll, 90)
 		; make folder images for Linux ISO files
 		If Not FileExists($TargetDrive & "\images") Then DirCreate($TargetDrive & "\images")
 		If Not FileExists($TargetDrive & "\images\Linux_ISO_Files.txt") Then FileCopy(@ScriptDir & "\makebt\Linux_ISO_Files.txt", $TargetDrive & "\images\", 1)
@@ -898,8 +971,114 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 
 EndFunc ;==> _USB_Format
 ;===================================================================================================
+Func _pe_boot_menu()
+
+	Local $val=0, $len, $pos, $sdi_file = "boot.sdi"
+	Local $guid, $pos1, $pos2, $ramdisk_guid = "", $pe_guid = ""
+	Local $file, $line
+
+	$bcdedit = @WindowsDir & "\system32\bcdedit.exe"
+
+	RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /create /device > " & $sdi_guid_outfile, @ScriptDir, @SW_HIDE)
+	$file = FileOpen(@ScriptDir & "\" & $sdi_guid_outfile, 0)
+	$line = FileReadLine($file)
+	FileClose($file)
+	$pos1 = StringInStr($line, "{")
+	$pos2 = StringInStr($line, "}")
+	If $pos2-$pos1=37 Then
+		$ramdisk_guid = StringMid($line, $pos1, $pos2-$pos1+1)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $ramdisk_guid & " ramdisksdidevice boot", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $ramdisk_guid & " ramdisksdipath \Boot\" & $sdi_file, $TargetDrive & "\", @SW_HIDE)
+	EndIf
+	RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /create /application osloader > " & $bcd_guid_outfile, @ScriptDir, @SW_HIDE)
+	$file = FileOpen(@ScriptDir & "\" & $bcd_guid_outfile, 0)
+	$line = FileReadLine($file)
+	FileClose($file)
+	$pos1 = StringInStr($line, "{")
+	$pos2 = StringInStr($line, "}")
+	If $pos2-$pos1=37 And $ramdisk_guid <> "" Then
+		$pe_guid = StringMid($line, $pos1, $pos2-$pos1+1)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $pe_guid & " DESCRIPTION " & "PE-Boot-WIM", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $pe_guid & " device ramdisk=[boot]\boot.wim," & $ramdisk_guid, $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $pe_guid & " osdevice ramdisk=[boot]\boot.wim," & $ramdisk_guid, $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $pe_guid & " systemroot \Windows", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $pe_guid & " detecthal on", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $pe_guid & " winpe Yes", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /displayorder " & $pe_guid & " /addfirst", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $pe_guid & " bootmenupolicy legacy", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $pe_guid & " NoIntegrityChecks 1", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $pe_guid & " loadoptions DISABLE_INTEGRITY_CHECKS", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $pe_guid & " testsigning on", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /default " & $pe_guid, $TargetDrive & "\", @SW_HIDE)
+	EndIf
+	RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /set {bootmgr} nointegritychecks on", $TargetDrive & "\", @SW_HIDE)
+	; to get PE ProgressBar and Win Boot Manager Menu displayed and waiting for User Selection
+	RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+	& $store & " /bootems {emssettings} ON", $TargetDrive & "\", @SW_HIDE)
+
+EndFunc   ;==> _pe_boot_menu
+;===================================================================================================
+Func _BCD_VHD_Entry()
+	Local $file, $line, $pos1, $pos2, $guid
+
+	$bcdedit = @WindowsDir & "\system32\bcdedit.exe"
+
+	RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+	& $store & " /create /d " & '"' & $vhdfile_name & '"' & " /application osloader > " & $bcd_guid_outfile, @ScriptDir, @SW_HIDE)
+	$file = FileOpen(@ScriptDir & "\" & $bcd_guid_outfile, 0)
+	$line = FileReadLine($file)
+	FileClose($file)
+	$pos1 = StringInStr($line, "{")
+	$pos2 = StringInStr($line, "}")
+	If $pos2-$pos1=37 Then
+		$guid = StringMid($line, $pos1, $pos2-$pos1+1)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $guid & " device vhd=[locate]\" & $vhdfile_name, $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $guid & " osdevice vhd=[locate]\" & $vhdfile_name, $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $guid & " path \Windows\system32\" & $winload, $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $guid & " systemroot \Windows", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $guid & " locale " & $WinLang, $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $guid & " nx OptIn", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /displayorder " & $guid & " /addfirst", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /default " & $guid, $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $guid & " detecthal on", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $guid & " bootmenupolicy legacy", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $guid & " testsigning on", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set {bootmgr} nointegritychecks on", $TargetDrive & "\", @SW_HIDE)
+		; to get PE ProgressBar and Win 8 Boot Manager Menu displayed and waiting for User Selection
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /bootems {emssettings} ON", $TargetDrive & "\", @SW_HIDE)
+	EndIf
+
+EndFunc ;==>  _BCD_VHD_Entry
+;===================================================================================================
 Func _g4d_bcd_menu()
-	Local $file, $line, $store, $guid, $pos1, $pos2
+	Local $file, $line, $guid, $pos1, $pos2
 
 	SystemFileRedirect("On")
 
@@ -943,7 +1122,7 @@ Func _g4d_bcd_menu()
 EndFunc   ;==> _g4d_bcd_menu
 ;===================================================================================================
 Func _bcd_grub2()
-	Local $file, $line, $store, $guid, $pos1, $pos2
+	Local $file, $line, $guid, $pos1, $pos2
 
 	SystemFileRedirect("On")
 
@@ -956,7 +1135,7 @@ Func _bcd_grub2()
 	If FileExists($TargetDrive & "\Boot\BCD") And $bcdedit <> "" Then
 		$store = $TargetDrive & "\Boot\BCD"
 
-	;	_GUICtrlStatusBar_SetText($hStatus," Making  Grub2 Entry in Boot Manager Menu - wait ....", 0)
+		_GUICtrlStatusBar_SetText($hStatus," Making Grub2 - AIO grub2win Entry in Boot Manager Menu", 0)
 
 		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
 		& $store & " /create /d " & '"' & "Grub2 - AIO grub2win" & '"' & " /application bootsector > makebt\bs_temp\bcd_grub2.txt", @ScriptDir, @SW_HIDE)
@@ -973,10 +1152,6 @@ Func _bcd_grub2()
 			& $store & " /set " & $guid & " path \AIO\grub\grub2win", $TargetDrive & "\", @SW_HIDE)
 			RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
 			& $store & " /displayorder " & $guid & " /addlast", $TargetDrive & "\", @SW_HIDE)
-;~ 			If $DriveType="Removable" Or $usbfix Then
-;~ 				RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
-;~ 				& $store & " /default " & $guid, $TargetDrive & "\", @SW_HIDE)
-;~ 			EndIf
 		EndIf
 	Else
 		MsgBox(48, "CONFIG ERROR Or Missing File", "Unable to Add Grub2 to Boot Manager Menu" & @CRLF & @CRLF _
@@ -988,7 +1163,7 @@ Func _bcd_grub2()
 EndFunc   ;==> _bcd_grub2
 ;===================================================================================================
 Func _bcd_grub2win()
-	Local $file, $line, $store, $guid, $pos1, $pos2
+	Local $file, $line, $guid, $pos1, $pos2
 
 	SystemFileRedirect("On")
 
@@ -1001,7 +1176,7 @@ Func _bcd_grub2win()
 	If FileExists($TargetDrive & "\Boot\BCD") And $bcdedit <> "" Then
 		$store = $TargetDrive & "\Boot\BCD"
 
-	;	_GUICtrlStatusBar_SetText($hStatus," Making  Grub2 Entry in Boot Manager Menu - wait ....", 0)
+		_GUICtrlStatusBar_SetText($hStatus," Making  Grub2Win Entry in Boot Manager Menu - wait ....", 0)
 
 		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
 		& $store & " /create /d " & '"' & "Grub 2 for Windows - Linux ISO" & '"' & " /application bootsector > makebt\bs_temp\bcd_grub2win.txt", @ScriptDir, @SW_HIDE)
@@ -1018,10 +1193,6 @@ Func _bcd_grub2win()
 			& $store & " /set " & $guid & " path \grub2\g2bootmgr\gnugrub.kernel.bios", $TargetDrive & "\", @SW_HIDE)
 			RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
 			& $store & " /displayorder " & $guid & " /addlast", $TargetDrive & "\", @SW_HIDE)
-;~ 			If $DriveType="Removable" Or $usbfix Then
-;~ 				RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
-;~ 				& $store & " /default " & $guid, $TargetDrive & "\", @SW_HIDE)
-;~ 			EndIf
 		EndIf
 	Else
 		MsgBox(48, "CONFIG ERROR Or Missing File", "Unable to Add Grub2Win to Boot Manager Menu" & @CRLF & @CRLF _
