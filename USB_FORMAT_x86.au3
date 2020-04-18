@@ -2,9 +2,9 @@
 #cs ----------------------------------------------------------------------------
 
 AutoIt Version: 3.3.14.5
- Author:        WIMB  -  April 15, 2020
+ Author:        WIMB  -  April 18, 2020
 
- Program:       USB_FORMAT_x86.exe - Version 4.0 in rule 103
+ Program:       USB_FORMAT_x86.exe - Version 4.0 in rule 107
 
  Script Function
 	can be used to Format USB Drive for Booting with Windows Boot Manager Menu in BIOS or UEFI mode and
@@ -43,12 +43,12 @@ Opt("TrayIconHide", 1)
 ; Setting variables
 Global $TargetDrive="", $ProgressAll, $hStatus, $TargetSize, $TargetFree, $FSvar="", $WinLang = "en-US", $PE_flag = 0
 Global $hGuiParent, $EXIT, $TargetSel, $Target, $BootLoader, $Bootmgr_Menu, $Allow_Fixed_USB, $Reversed_PartLayout, $Add_PE_Menu, $Add_VHD_Menu
-Global $DriveType="Fixed", $usbfix=0, $bcdedit="", $refind, $Combo_EFI, $WinDir_PE="D:\Windows", $BusType = ""
+Global $DriveType="Fixed", $usbfix=0, $bcdedit="", $refind, $Combo_EFI, $WinDir_PE="D:\Windows", $WinDir_PE_flag=0, $BusType = ""
 
 Global $Target_Device, $Target_Type, $FormUSB, $Combo_2nd, $f32_size="10240", $ntfs_size="", $NTFS_Drive = ""
 Global $inst_disk="", $inst_part="", $disk_size="", $vol_size="", $disk_GB = 15, $dp_finish = 0
 
-Global $bcdedit="", $winload = "winload.exe", $bcd_guid_outfile = "makebt\bs_temp\bcd_boot_vhd.txt", $store = "", $WinLang = "en-US", $vhdfile_name = "Win10x64.vhd"
+Global $bcdedit="", $winload = "winload.exe", $bcd_guid_outfile = "makebt\bs_temp\pe_guid.txt", $store = "", $WinLang = "en-US", $vhdfile_name = "Win10x64.vhd"
 Global $sdi_guid_outfile = "makebt\bs_temp\sdi_guid.txt"
 
 Global $str = "", $bt_files[9] = ["\makebt\listusbdrives\ListUsbDrives.exe", "\makebt\grldr.mbr", "\makebt\grldr", "\makebt\menu.lst", _
@@ -84,6 +84,7 @@ Else
 	$PE_flag = 0
 EndIf
 
+$WinDir_PE_flag=0
 If $PE_flag = 1 Then
 	If FileExists("C:\Windows\Boot") Then
 		$WinDir_PE = "C:\Windows"
@@ -91,6 +92,9 @@ If $PE_flag = 1 Then
 		$WinDir_PE = "D:\Windows"
 	ElseIf FileExists("E:\Windows\Boot") Then
 		$WinDir_PE = "E:\Windows"
+	ElseIf FileExists(@WindowsDir & "\Boot") Then
+		$WinDir_PE = @WindowsDir
+		$WinDir_PE_flag=1
 	Else
 		$WinDir_PE = "D:\Windows"
 	EndIf
@@ -790,7 +794,11 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 		Else
 			If $PE_flag = 1 Then
 				_GUICtrlStatusBar_SetText($hStatus," PE x64 - Make Boot Manager Menu on USB " & $TargetDrive & " - wait .... ", 0)
-				$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdboot.exe " & $WinDir_PE & " /s " & $TargetDrive & " /f ALL", @ScriptDir, @SW_HIDE)
+				If $WinDir_PE_flag=0 Then
+					$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdboot.exe " & $WinDir_PE & " /s " & $TargetDrive & " /f ALL", @ScriptDir, @SW_HIDE)
+				Else
+					_BCD_Create()
+				EndIf
 			Else
 				_GUICtrlStatusBar_SetText($hStatus," Make Boot Manager Menu on USB Drive " & $TargetDrive & " - wait .... ", 0)
 				$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdboot.exe " & @WindowsDir & " /l " & $WinLang & " /s " & $TargetDrive, @ScriptDir, @SW_HIDE)
@@ -859,8 +867,8 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 				$bcd_guid_outfile = "makebt\bs_temp\bcd_efi_usb.txt"
 				_BCD_VHD_Entry()
 			EndIf
-
-			If GUICtrlRead($Add_PE_Menu) = $GUI_CHECKED Then
+			; anyway have two EFI Menu entries
+			If GUICtrlRead($Add_PE_Menu) = $GUI_CHECKED Or GUICtrlRead($Add_VHD_Menu) = $GUI_UNCHECKED Then
 				$store = $TargetDrive & "\efi\microsoft\boot\BCD"
 				$sdi_guid_outfile = "makebt\bs_temp\efi_sdi_guid.txt"
 				$bcd_guid_outfile = "makebt\bs_temp\efi_pe_guid.txt"
@@ -971,6 +979,86 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 
 EndFunc ;==> _USB_Format
 ;===================================================================================================
+Func _BCD_Create()
+
+	$bcdedit = @WindowsDir & "\system32\bcdedit.exe"
+
+	If Not FileExists($TargetDrive & "\Boot\BCD") Then
+		DirCopy(@WindowsDir & "\Boot\PCAT", $TargetDrive & "\Boot", 1)
+		DirCopy(@WindowsDir & "\Boot\Fonts", $TargetDrive & "\Boot\Fonts", 1)
+		DirCopy(@WindowsDir & "\Boot\Resources", $TargetDrive & "\Boot\Resources", 1)
+		If Not FileExists($TargetDrive & "\Boot\boot.sdi") And FileExists(@WindowsDir & "\Boot\DVD\PCAT\boot.sdi") Then
+			FileCopy(@WindowsDir & "\Boot\DVD\PCAT\boot.sdi", $TargetDrive & "\Boot\", 1)
+		EndIf
+		FileMove($TargetDrive & "\Boot\bootmgr", $TargetDrive & "\bootmgr", 1)
+		FileMove($TargetDrive & "\Boot\bootnxt", $TargetDrive & "\BOOTNXT", 1)
+
+		$store = $TargetDrive & "\Boot\BCD"
+		RunWait(@ComSpec & " /c " & $bcdedit & " /createstore " & $store, $TargetDrive & "\", @SW_HIDE)
+		sleep(1000)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /create {bootmgr}", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /set {bootmgr} description " & '"' & "Windows Boot Manager" & '"', $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /set {bootmgr} device boot", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /set {bootmgr} inherit {globalsettings}", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /set {bootmgr} timeout 20", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /set {bootmgr} toolsdisplayorder {memdiag}", $TargetDrive & "\", @SW_HIDE)
+		; sleep(1000)
+
+		$winload = "winload.exe"
+		$bcd_guid_outfile = "makebt\bs_temp\crea_win_guid.txt"
+		_win_boot_menu()
+
+		If GUICtrlRead($Add_PE_Menu) = $GUI_UNCHECKED And GUICtrlRead($Add_VHD_Menu) = $GUI_UNCHECKED Then
+			$sdi_guid_outfile = "makebt\bs_temp\crea_sdi_guid.txt"
+			$bcd_guid_outfile = "makebt\bs_temp\crea_pe_guid.txt"
+			_pe_boot_menu()
+		EndIf
+
+		_mem_boot_menu()
+
+	EndIf
+
+	If Not FileExists($TargetDrive & "\EFI\Microsoft\Boot\BCD") Then
+		_GUICtrlStatusBar_SetText($hStatus," PE x64 - Make EFI Manager Menu on USB " & $TargetDrive & " - wait .... ", 0)
+		DirCopy(@WindowsDir & "\Boot\EFI", $TargetDrive & "\EFI\Microsoft\Boot", 1)
+		DirCopy(@WindowsDir & "\Boot\Fonts", $TargetDrive & "\EFI\Microsoft\Boot\Fonts", 1)
+		DirCopy(@WindowsDir & "\Boot\Resources", $TargetDrive & "\EFI\Microsoft\Boot\Resources", 1)
+		If Not FileExists($TargetDrive & "\Boot\boot.sdi") And FileExists(@WindowsDir & "\Boot\DVD\PCAT\boot.sdi") Then
+			FileCopy(@WindowsDir & "\Boot\DVD\PCAT\boot.sdi", $TargetDrive & "\Boot\", 1)
+		EndIf
+		If FileExists(@WindowsDir & "\Boot\EFI\bootmgfw.efi") Then
+			FileCopy(@WindowsDir & "\Boot\EFI\bootmgfw.efi", $TargetDrive & "\EFI\Boot\", 9)
+			FileMove($TargetDrive & "\EFI\Boot\bootmgfw.efi", $TargetDrive & "\EFI\Boot\bootx64.efi", 1)
+		EndIf
+
+		$store = $TargetDrive & "\EFI\Microsoft\Boot\BCD"
+		RunWait(@ComSpec & " /c " & $bcdedit & " /createstore " & $store, $TargetDrive & "\", @SW_HIDE)
+		sleep(1000)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /create {bootmgr}", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /set {bootmgr} description " & '"' & "Windows Boot Manager" & '"', $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /set {bootmgr} device boot", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /set {bootmgr} inherit {globalsettings}", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /set {bootmgr} timeout 20", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /set {bootmgr} toolsdisplayorder {memdiag}", $TargetDrive & "\", @SW_HIDE)
+		; sleep(1000)
+
+		$winload = "winload.efi"
+		$bcd_guid_outfile = "makebt\bs_temp\crea_efi_win_guid.txt"
+		_win_boot_menu()
+
+		; anyway have two EFI Menu entries
+		If GUICtrlRead($Add_PE_Menu) = $GUI_UNCHECKED And GUICtrlRead($Add_VHD_Menu) = $GUI_UNCHECKED Then
+			$sdi_guid_outfile = "makebt\bs_temp\crea_efi_sdi_guid.txt"
+			$bcd_guid_outfile = "makebt\bs_temp\crea_efi_pe_guid.txt"
+			_pe_boot_menu()
+		EndIf
+
+		_mem_boot_menu()
+
+	EndIf
+
+EndFunc ;==>  _BCD_Create
+;===================================================================================================
 Func _pe_boot_menu()
 
 	Local $val=0, $len, $pos, $sdi_file = "boot.sdi"
@@ -1009,6 +1097,10 @@ Func _pe_boot_menu()
 		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
 		& $store & " /set " & $pe_guid & " systemroot \Windows", $TargetDrive & "\", @SW_HIDE)
 		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $pe_guid & " inherit {bootloadersettings}", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $pe_guid & " nx OptIn", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
 		& $store & " /set " & $pe_guid & " detecthal on", $TargetDrive & "\", @SW_HIDE)
 		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
 		& $store & " /set " & $pe_guid & " winpe Yes", $TargetDrive & "\", @SW_HIDE)
@@ -1031,6 +1123,67 @@ Func _pe_boot_menu()
 	& $store & " /bootems {emssettings} ON", $TargetDrive & "\", @SW_HIDE)
 
 EndFunc   ;==> _pe_boot_menu
+;===================================================================================================
+Func _win_boot_menu()
+
+	Local $val=0, $len, $pos
+	Local $guid, $pos1, $pos2, $win_guid = ""
+	Local $file, $line
+
+	$bcdedit = @WindowsDir & "\system32\bcdedit.exe"
+
+	RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /create /application osloader > " & $bcd_guid_outfile, @ScriptDir, @SW_HIDE)
+	$file = FileOpen(@ScriptDir & "\" & $bcd_guid_outfile, 0)
+	$line = FileReadLine($file)
+	FileClose($file)
+	$pos1 = StringInStr($line, "{")
+	$pos2 = StringInStr($line, "}")
+	If $pos2-$pos1=37 Then
+		$win_guid = StringMid($line, $pos1, $pos2-$pos1+1)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $win_guid & " DESCRIPTION " & "Windows-C-Drive", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $win_guid & " device partition=C:", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $win_guid & " osdevice partition=C:", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $win_guid & " systemroot \Windows", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $win_guid & " path \Windows\system32\" & $winload, $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $win_guid & " inherit {bootloadersettings}", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $win_guid & " nx OptIn", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /displayorder " & $win_guid & " /addfirst", $TargetDrive & "\", @SW_HIDE)
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set " & $win_guid & " bootmenupolicy legacy", $TargetDrive & "\", @SW_HIDE)
+	EndIf
+
+EndFunc   ;==> _win_boot_menu
+;===================================================================================================
+Func _mem_boot_menu()
+
+	$bcdedit = @WindowsDir & "\system32\bcdedit.exe"
+
+	RunWait(@ComSpec & " /c " & $bcdedit & " /store " & $store & " /create {memdiag}", @ScriptDir, @SW_HIDE)
+	RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+	& $store & " /set {memdiag} DESCRIPTION " & '"' & "Windows Memory Diagnostic" & '"', $TargetDrive & "\", @SW_HIDE)
+	RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+	& $store & " /set {memdiag} device boot", $TargetDrive & "\", @SW_HIDE)
+	If $store = $TargetDrive & "\Boot\BCD" Then
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set {memdiag} path \Boot\memtest.exe", $TargetDrive & "\", @SW_HIDE)
+	Else
+		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+		& $store & " /set {memdiag} path \EFI\Microsoft\Boot\memtest.efi", $TargetDrive & "\", @SW_HIDE)
+	EndIf
+	RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+	& $store & " /set {memdiag} inherit {globalsettings}", $TargetDrive & "\", @SW_HIDE)
+	RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+	& $store & " /set {memdiag} badmemoryaccess Yes", $TargetDrive & "\", @SW_HIDE)
+
+EndFunc   ;==> _win_boot_menu
 ;===================================================================================================
 Func _BCD_VHD_Entry()
 	Local $file, $line, $pos1, $pos2, $guid
@@ -1068,6 +1221,11 @@ Func _BCD_VHD_Entry()
 		& $store & " /set " & $guid & " bootmenupolicy legacy", $TargetDrive & "\", @SW_HIDE)
 		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
 		& $store & " /set " & $guid & " testsigning on", $TargetDrive & "\", @SW_HIDE)
+		; Without PE make Win10x64.vhd set as default entry
+		If GUICtrlRead($Add_PE_Menu) = $GUI_UNCHECKED Then
+			RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
+			& $store & " /default " & $guid, $TargetDrive & "\", @SW_HIDE)
+		EndIf
 		RunWait(@ComSpec & " /c " & $bcdedit & " /store " _
 		& $store & " /set {bootmgr} nointegritychecks on", $TargetDrive & "\", @SW_HIDE)
 		; to get PE ProgressBar and Win 8 Boot Manager Menu displayed and waiting for User Selection
