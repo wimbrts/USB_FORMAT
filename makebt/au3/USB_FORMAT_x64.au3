@@ -2,9 +2,9 @@
 #cs ----------------------------------------------------------------------------
 
 AutoIt Version: 3.3.14.5
- Author:        WIMB  -  April 18, 2020
+ Author:        WIMB  -  May 09, 2020
 
- Program:       USB_FORMAT_x64.exe - Version 4.0 in rule 107
+ Program:       USB_FORMAT_x64.exe - Version 4.1 in rule 114
 
  Script Function
 	can be used to Format USB Drive for Booting with Windows Boot Manager Menu in BIOS or UEFI mode and
@@ -41,7 +41,7 @@ Opt("GuiOnEventMode", 1)
 Opt("TrayIconHide", 1)
 
 ; Setting variables
-Global $TargetDrive="", $ProgressAll, $hStatus, $TargetSize, $TargetFree, $FSvar="", $WinLang = "en-US", $PE_flag = 0
+Global $TargetDrive="", $ProgressAll, $hStatus, $TargetSize, $TargetFree, $FSvar="", $WinLang = "en-US", $PE_flag = 0, $Firmware = ""
 Global $hGuiParent, $EXIT, $TargetSel, $Target, $BootLoader, $Bootmgr_Menu, $Allow_Fixed_USB, $Reversed_PartLayout, $Add_PE_Menu, $Add_VHD_Menu
 Global $DriveType="Fixed", $usbfix=0, $bcdedit="", $refind, $Combo_EFI, $WinDir_PE="D:\Windows", $WinDir_PE_flag=0, $BusType = ""
 
@@ -100,11 +100,19 @@ If $PE_flag = 1 Then
 	EndIf
 EndIf
 
+SystemFileRedirect("On")
+$Firmware = _WinAPI_GetFirmwareEnvironmentVariable()
+SystemFileRedirect("Off")
+
 ; Creating GUI and controls
 $hGuiParent = GUICreate(" USB_FORMAT x64 - Tool to Make Bootable USB Drive", 400, 430, -1, -1, BitXOR($GUI_SS_DEFAULT_GUI, $WS_MINIMIZEBOX))
 GUISetOnEvent($GUI_EVENT_CLOSE, "_Quit")
 
-GUICtrlCreateGroup("USB FORMAT - Version 4.0 ", 18, 10, 364, 150)
+If $PE_flag = 1 Then
+	GUICtrlCreateGroup("USB FORMAT - Version 4.1  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware & "  PE", 18, 10, 364, 150)
+Else
+	GUICtrlCreateGroup("USB FORMAT - Version 4.1  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 150)
+EndIf
 
 GUICtrlCreateLabel( "1 - Format USB Drive with MBR and 2 Partitions FAT32 + NTFS", 32, 37)
 GUICtrlCreateLabel( "2 - UEFI_MULTI can Add VHD or PE WIM File Booting from RAMDISK", 32, 67)
@@ -212,6 +220,27 @@ GUICtrlSetState($Bootmgr_Menu, $GUI_ENABLE + $GUI_CHECKED)
 
 GUISetState(@SW_SHOW)
 
+If @OSVersion = "WIN_10" Or @OSVersion = "WIN_81" Or @OSVersion = "WIN_8" And @OSArch <> "X86" And $PE_flag = 0 Then
+	; OK
+Else
+	If $PE_flag = 1 And @OSArch <> "X86" Then
+		; PE OK
+	Else
+		If @OSVersion = "WIN_10" Or @OSVersion = "WIN_81" Or @OSVersion = "WIN_8" And @OSArch = "X86" Then
+			MsgBox(48, "WARNING - OS Invalid to make x64 EFI Boot Manager ", "OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware & @CRLF _
+			& @CRLF & "Cannot make Windows x64 EFI Boot Manager " & @CRLF _
+			& @CRLF & "Instead Use Win 10 x64 Or Win 8.1 x64 as OS" & @CRLF _
+			& @CRLF & "Or Proceed with Windows x86 EFI Manager " & @CRLF _
+			& @CRLF & "Or Select Grub2 or Other as EFI Manager ", 0)
+		Else
+			MsgBox(48, "WARNING - OS Invalid to make x64 EFI Boot Manager ", "OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware & @CRLF _
+			& @CRLF & "Cannot make Windows x64 EFI Boot Manager " & @CRLF _
+			& @CRLF & "Instead Use Win 10 x64 Or Win 8.1 x64 as OS" & @CRLF _
+			& @CRLF & "Or Proceed and Select Grub2 as EFI Manager ", 0)
+		EndIf
+	EndIf
+EndIf
+
 ;===================================================================================================
 While 1
 	CheckGo()
@@ -250,6 +279,21 @@ Func _Quit()
         GUIDelete(@GUI_WinHandle)
     EndIf
 EndFunc   ;==> _Quit
+;===================================================================================================
+Func _WinAPI_GetFirmwareEnvironmentVariable()
+    DllCall("kernel32.dll", "dword", _
+            "GetFirmwareEnvironmentVariableW", "wstr", "", _
+            "wstr", "{00000000-0000-0000-0000-000000000000}", "wstr", "", "dword", 4096)
+    Local $iError = DllCall("kernel32.dll", "dword", "GetLastError")
+    Switch $iError[0]
+        Case 1
+            Return "LEGACY"
+        Case 998
+            Return "UEFI"
+        Case Else
+            Return "UNKNOWN"
+    EndSwitch
+EndFunc   ;==>_WinAPI_GetFirmwareEnvironmentVariable
 ;===================================================================================================
 Func SystemFileRedirect($Wow64Number)
 	If @OSArch = "X64" Then
@@ -788,12 +832,12 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 
 	If $TargetDrive <> "" And GUICtrlRead($Bootmgr_Menu) = $GUI_CHECKED Then
 		; SystemFileRedirect("On")
-		If @OSVersion = "WIN_10" Or @OSVersion = "WIN_81" Or @OSVersion = "WIN_8" And @OSArch <> "X86" And $PE_flag = 0 Then
-			_GUICtrlStatusBar_SetText($hStatus," UEFI x64 - Make Boot Manager Menu on USB " & $TargetDrive & " - wait .... ", 0)
+		If @OSVersion = "WIN_10" Or @OSVersion = "WIN_81" Or @OSVersion = "WIN_8" And $PE_flag = 0 Then
+			_GUICtrlStatusBar_SetText($hStatus," UEFI - Make Boot Manager Menu on USB " & $TargetDrive & " - wait .... ", 0)
 			$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdboot.exe " & @WindowsDir & " /l " & $WinLang & " /s " & $TargetDrive & " /f ALL", @ScriptDir, @SW_HIDE)
 		Else
 			If $PE_flag = 1 Then
-				_GUICtrlStatusBar_SetText($hStatus," PE x64 - Make Boot Manager Menu on USB " & $TargetDrive & " - wait .... ", 0)
+				_GUICtrlStatusBar_SetText($hStatus," PE - Make Boot Manager Menu on USB " & $TargetDrive & " - wait .... ", 0)
 				If $WinDir_PE_flag=0 Then
 					$val = RunWait(@ComSpec & " /c " & @WindowsDir & "\system32\bcdboot.exe " & $WinDir_PE & " /s " & $TargetDrive & " /f ALL", @ScriptDir, @SW_HIDE)
 				Else
@@ -886,6 +930,9 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 		If FileExists($TargetDrive & "\efi\boot\bootx64.efi") And Not FileExists($TargetDrive & "\efi\boot\org-bootx64.efi") Then
 			FileMove($TargetDrive & "\efi\boot\bootx64.efi", $TargetDrive & "\efi\boot\org-bootx64.efi", 1)
 		EndIf
+		If GUICtrlRead($Combo_EFI) = "Other" And FileExists($TargetDrive & "\efi\boot\bootia32.efi") And Not FileExists($TargetDrive & "\efi\boot\org-bootia32.efi") Then
+			FileMove($TargetDrive & "\efi\boot\bootia32.efi", $TargetDrive & "\efi\boot\org-bootia32.efi", 1)
+		EndIf
 		If Not FileExists($TargetDrive & "\efi\microsoft\boot\bootmgfw.efi") And @OSArch = "X64" Then
 			If FileExists(@WindowsDir & "\Boot\EFI\bootmgfw.efi") And FileExists($TargetDrive & "\efi\microsoft\boot\bcd") Then
 				FileCopy(@WindowsDir & "\Boot\EFI\bootmgfw.efi", $TargetDrive & "\efi\microsoft\boot\", 0)
@@ -901,18 +948,21 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 			_GUICtrlStatusBar_SetText($hStatus," Adding Grub2 EFI Manager - wait .... ", 0)
 			DirCopy(@ScriptDir & "\UEFI_MAN\efi_mint", $TargetDrive & "\efi", 1)
 			If Not FileExists($TargetDrive & "\grubfm.iso") And FileExists(@ScriptDir & "\UEFI_MAN\grubfm.iso") Then FileCopy(@ScriptDir & "\UEFI_MAN\grubfm.iso", $TargetDrive & "\", 1)
-			If FileExists(@ScriptDir & "\UEFI_MAN\efi\boot\grubfmx64.efi") Then FileCopy(@ScriptDir & "\UEFI_MAN\efi\boot\grubfmx64.efi", $TargetDrive & "\efi\boot\", 1)
-			If FileExists(@ScriptDir & "\UEFI_MAN\efi\boot\grubfmia32.efi") Then FileCopy(@ScriptDir & "\UEFI_MAN\efi\boot\grubfmia32.efi", $TargetDrive & "\efi\boot\", 1)
+			; If FileExists(@ScriptDir & "\UEFI_MAN\efi\boot\grubfmx64.efi") Then FileCopy(@ScriptDir & "\UEFI_MAN\efi\boot\grubfmx64.efi", $TargetDrive & "\efi\boot\", 1)
+			; If FileExists(@ScriptDir & "\UEFI_MAN\efi\boot\grubfmia32.efi") Then FileCopy(@ScriptDir & "\UEFI_MAN\efi\boot\grubfmia32.efi", $TargetDrive & "\efi\boot\", 1)
 		Else
 			_GUICtrlStatusBar_SetText($hStatus," Adding Other EFI Manager - wait .... ", 0)
 			DirCopy(@ScriptDir & "\UEFI_MAN\efi", $TargetDrive & "\efi", 1)
 			If FileExists(@ScriptDir & "\UEFI_MAN\grub2") Then
+				GUICtrlSetData($ProgressAll, 85)
+				_GUICtrlStatusBar_SetText($hStatus," Adding Grub2Win for BIOS mode - wait .... ", 0)
 				DirCopy(@ScriptDir & "\UEFI_MAN\grub2", $TargetDrive & "\grub2", 1)
 			EndIf
 			If FileExists(@ScriptDir & "\UEFI_MAN\ENROLL_THIS_KEY_IN_MOKMANAGER.cer") Then FileCopy(@ScriptDir & "\UEFI_MAN\ENROLL_THIS_KEY_IN_MOKMANAGER.cer", $TargetDrive & "\", 1)
 			If Not FileExists($TargetDrive & "\grubfm.iso") And FileExists(@ScriptDir & "\UEFI_MAN\grubfm.iso") Then FileCopy(@ScriptDir & "\UEFI_MAN\grubfm.iso", $TargetDrive & "\", 1)
 			DirCopy(@ScriptDir & "\UEFI_MAN\iso", $TargetDrive & "\iso", 1)
 		EndIf
+		; _GUICtrlStatusBar_SetText($hStatus," Adding Grub Config - wait .... ", 0)
 		If Not FileExists($TargetDrive & "\boot\grub\grub.cfg") Then
 			If FileExists($TargetDrive & "\AIO\grub\grub.cfg") And Not FileExists($TargetDrive & "\boot\grub\Main.cfg") Then
 				DirCopy($TargetDrive & "\AIO\grub", $TargetDrive& "\boot\grub", 1)
@@ -963,7 +1013,7 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 		If Not FileExists($TargetDrive & "\grub.exe") Then FileCopy(@ScriptDir & "\makebt\grub.exe", $TargetDrive & "\", 1)
 		If Not FileExists($TargetDrive & "\menu.lst") Then FileCopy(@ScriptDir & "\makebt\menu.lst", $TargetDrive & "\", 1)
 		If Not FileExists($TargetDrive & "\menu_Linux.lst") Then FileCopy(@ScriptDir & "\makebt\menu_Linux.lst", $TargetDrive & "\", 1)
-		If FileExists(@ScriptDir & "\UEFI_MAN\grubfm.iso") Then FileCopy(@ScriptDir & "\UEFI_MAN\grubfm.iso", $TargetDrive & "\", 1)
+		If Not FileExists($TargetDrive & "\grubfm.iso") And FileExists(@ScriptDir & "\UEFI_MAN\grubfm.iso") Then FileCopy(@ScriptDir & "\UEFI_MAN\grubfm.iso", $TargetDrive & "\", 1)
 		; make folder images for Linux ISO files
 		If Not FileExists($TargetDrive & "\images") Then DirCreate($TargetDrive & "\images")
 		If Not FileExists($TargetDrive & "\images\Linux_ISO_Files.txt") Then FileCopy(@ScriptDir & "\makebt\Linux_ISO_Files.txt", $TargetDrive & "\images\", 1)
@@ -972,8 +1022,24 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 		Sleep(1000)
 	EndIf
 
+	If @OSVersion = "WIN_10" Or @OSVersion = "WIN_81" Or @OSVersion = "WIN_8" And Not FileExists($TargetDrive & "\efi\boot\bootx64.efi") Then
+		_GUICtrlStatusBar_SetText($hStatus," WARNING - UEFI x64 needs file bootx64.efi ", 0)
+		MsgBox(64, " WARNING - UEFI needs file bootx64.efi ", " BIOS boot OK, but UEFI x64 needs file efi\boot\bootx64.efi " & @CRLF & @CRLF _
+		& $TargetDrive & "\efi\boot\bootx64.efi is missing on Target Boot Drive " & @CRLF & @CRLF _
+		& " Get from Win 8/10 x64 OS file Windows\Boot\EFI\bootmgfw.efi " & @CRLF & @CRLF _
+		& " Copy file bootmgfw.efi as bootx64.efi in " & $TargetDrive & "\efi\boot" )
+	EndIf
+	If @OSVersion = "WIN_10" Or @OSVersion = "WIN_81" Or @OSVersion = "WIN_8" And Not FileExists($TargetDrive & "\efi\boot\bootia32.efi") And Not FileExists($TargetDrive & "\efi\boot\bootx64.efi") Then
+		_GUICtrlStatusBar_SetText($hStatus," WARNING - UEFI x86 needs file bootia32.efi ", 0)
+		MsgBox(64, " WARNING - UEFI x86 needs file bootia32.efi ", " BIOS boot OK, but UEFI x86 needs file efi\boot\bootia32.efi " & @CRLF & @CRLF _
+		& $TargetDrive & "\efi\boot\bootia32.efi is missing on Target Boot Drive " & @CRLF & @CRLF _
+		& " Get from Win 8/10 x86 OS file Windows\Boot\EFI\bootmgfw.efi " & @CRLF & @CRLF _
+		& " Copy file bootmgfw.efi as bootia32.efi in " & $TargetDrive & "\efi\boot" )
+	EndIf
+
 	_GUICtrlStatusBar_SetText($hStatus," Formatting Target USB Drive - Ready ", 0)
 	GUICtrlSetData($ProgressAll, 100)
+
 	MsgBox(64, "FORMAT - Ready", "Formatting Target USB Drive - Ready", 0)
 	Exit
 
@@ -1019,7 +1085,7 @@ Func _BCD_Create()
 	EndIf
 
 	If Not FileExists($TargetDrive & "\EFI\Microsoft\Boot\BCD") Then
-		_GUICtrlStatusBar_SetText($hStatus," PE x64 - Make EFI Manager Menu on USB " & $TargetDrive & " - wait .... ", 0)
+		_GUICtrlStatusBar_SetText($hStatus," PE - Make EFI Manager Menu on USB " & $TargetDrive & " - wait .... ", 0)
 		DirCopy(@WindowsDir & "\Boot\EFI", $TargetDrive & "\EFI\Microsoft\Boot", 1)
 		DirCopy(@WindowsDir & "\Boot\Fonts", $TargetDrive & "\EFI\Microsoft\Boot\Fonts", 1)
 		DirCopy(@WindowsDir & "\Boot\Resources", $TargetDrive & "\EFI\Microsoft\Boot\Resources", 1)
@@ -1028,7 +1094,11 @@ Func _BCD_Create()
 		EndIf
 		If FileExists(@WindowsDir & "\Boot\EFI\bootmgfw.efi") Then
 			FileCopy(@WindowsDir & "\Boot\EFI\bootmgfw.efi", $TargetDrive & "\EFI\Boot\", 9)
-			FileMove($TargetDrive & "\EFI\Boot\bootmgfw.efi", $TargetDrive & "\EFI\Boot\bootx64.efi", 1)
+			If @OSArch <> "X86" Then
+				FileMove($TargetDrive & "\EFI\Boot\bootmgfw.efi", $TargetDrive & "\EFI\Boot\bootx64.efi", 1)
+			Else
+				FileMove($TargetDrive & "\EFI\Boot\bootmgfw.efi", $TargetDrive & "\EFI\Boot\bootia32.efi", 1)
+			EndIf
 		EndIf
 
 		$store = $TargetDrive & "\EFI\Microsoft\Boot\BCD"
