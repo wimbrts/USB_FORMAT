@@ -2,9 +2,9 @@
 #cs ----------------------------------------------------------------------------
 
 AutoIt Version: 3.3.14.5
- Author:        WIMB  -  May 09, 2020
+ Author:        WIMB  -  May 30, 2020
 
- Program:       USB_FORMAT_x64.exe - Version 4.1 in rule 114
+ Program:       USB_FORMAT_x64.exe - Version 4.3 in rule 114
 
  Script Function
 	can be used to Format USB Drive for Booting with Windows Boot Manager Menu in BIOS or UEFI mode and
@@ -51,7 +51,7 @@ Global $inst_disk="", $inst_part="", $disk_size="", $vol_size="", $disk_GB = 15,
 Global $bcdedit="", $winload = "winload.exe", $bcd_guid_outfile = "makebt\bs_temp\pe_guid.txt", $store = "", $WinLang = "en-US", $vhdfile_name = "Win10x64.vhd"
 Global $sdi_guid_outfile = "makebt\bs_temp\sdi_guid.txt"
 
-Global $str = "", $bt_files[9] = ["\makebt\listusbdrives\ListUsbDrives.exe", "\makebt\grldr.mbr", "\makebt\grldr", "\makebt\menu.lst", _
+Global $str = "", $bt_files[10] = ["\makebt\listusbdrives\ListUsbDrives.exe", "\makebt\grldr.mbr", "\makebt\grldr", "\makebt\menu.lst", "\makebt\menu_Win_ISO.lst", _
 "\makebt\menu_Linux.lst", "\UEFI_MAN\efi", "\UEFI_MAN\efi_mint", "\makebt\Linux_ISO_Files.txt", "\makebt\grub.exe"]
 
 ;~ 	If @OSArch <> "X86" Then
@@ -109,9 +109,9 @@ $hGuiParent = GUICreate(" USB_FORMAT x64 - Tool to Make Bootable USB Drive", 400
 GUISetOnEvent($GUI_EVENT_CLOSE, "_Quit")
 
 If $PE_flag = 1 Then
-	GUICtrlCreateGroup("USB FORMAT - Version 4.1  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware & "  PE", 18, 10, 364, 150)
+	GUICtrlCreateGroup("USB FORMAT - Version 4.3  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware & "  PE", 18, 10, 364, 150)
 Else
-	GUICtrlCreateGroup("USB FORMAT - Version 4.1  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 150)
+	GUICtrlCreateGroup("USB FORMAT - Version 4.3  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 150)
 EndIf
 
 GUICtrlCreateLabel( "1 - Format USB Drive with MBR and 2 Partitions FAT32 + NTFS", 32, 37)
@@ -1013,6 +1013,7 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 		If Not FileExists($TargetDrive & "\grub.exe") Then FileCopy(@ScriptDir & "\makebt\grub.exe", $TargetDrive & "\", 1)
 		If Not FileExists($TargetDrive & "\menu.lst") Then FileCopy(@ScriptDir & "\makebt\menu.lst", $TargetDrive & "\", 1)
 		If Not FileExists($TargetDrive & "\menu_Linux.lst") Then FileCopy(@ScriptDir & "\makebt\menu_Linux.lst", $TargetDrive & "\", 1)
+		If Not FileExists($TargetDrive & "\menu_Win_ISO.lst") Then FileCopy(@ScriptDir & "\makebt\menu_Win_ISO.lst", $TargetDrive & "\", 1)
 		If Not FileExists($TargetDrive & "\grubfm.iso") And FileExists(@ScriptDir & "\UEFI_MAN\grubfm.iso") Then FileCopy(@ScriptDir & "\UEFI_MAN\grubfm.iso", $TargetDrive & "\", 1)
 		; make folder images for Linux ISO files
 		If Not FileExists($TargetDrive & "\images") Then DirCreate($TargetDrive & "\images")
