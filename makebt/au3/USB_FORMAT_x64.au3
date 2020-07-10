@@ -2,9 +2,9 @@
 #cs ----------------------------------------------------------------------------
 
 AutoIt Version: 3.3.14.5
- Author:        WIMB  -  July 06, 2020
+ Author:        WIMB  -  July 10, 2020
 
- Program:       USB_FORMAT_x64.exe - Version 4.6 in rule 114
+ Program:       USB_FORMAT_x64.exe - Version 4.7 in rule 120
 
  Script Function
 	can be used to Format USB Drive for Booting with Windows Boot Manager Menu and /or Grub2 Boot Manager in MBR BIOS or UEFI mode and
@@ -18,6 +18,7 @@ AutoIt Version: 3.3.14.5
 	a1ive for making Grub2 File Manager - https://github.com/a1ive/grub2-filemanager/releases
 	ValdikSS for making Super UEFIinSecureBoot Disk v3 - https://github.com/ValdikSS/Super-UEFIinSecureBoot-Disk/releases
 	Matthias Saou - thias - for making glim - https://github.com/thias/glim
+	chenall for making Grub4dos - https://github.com/chenall/grub4dos/releases and http://grub4dos.chenall.net/categories/downloads/
 
 	The program is released "as is" and is free for redistribution, use or changes as long as original author,
 	credits part and link to the reboot.pro and MSFN support forum are clearly mentioned
@@ -116,9 +117,9 @@ $hGuiParent = GUICreate(" USB_FORMAT x64 - Tool to Make Bootable USB Drive", 400
 GUISetOnEvent($GUI_EVENT_CLOSE, "_Quit")
 
 If $PE_flag = 1 Then
-	GUICtrlCreateGroup("USB FORMAT - Version 4.6  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware & "  PE", 18, 10, 364, 150)
+	GUICtrlCreateGroup("USB FORMAT - Version 4.7  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware & "  PE", 18, 10, 364, 150)
 Else
-	GUICtrlCreateGroup("USB FORMAT - Version 4.6  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 150)
+	GUICtrlCreateGroup("USB FORMAT - Version 4.7  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 150)
 EndIf
 
 GUICtrlCreateLabel( "1 - Format USB Drive with MBR and 2 Partitions FAT32 + NTFS", 32, 37)
@@ -139,7 +140,7 @@ GUICtrlSetTip($refind, " Add Grub2 Boot Manager for UEFI and MBR mode and Linux 
 & " - Mint   UEFI - Only for some Linux ISO Files in images folder " & @CRLF _
 & " - Super UEFI - use Addon with a1ive Grub2 File Manager " & @CRLF _
 & "   and Grub2 Live ISO Multiboot Menu for All Linux in iso folder " & @CRLF _
-& " - MBR  Only - use Addon with a1ive Grub2 File Manager - All Linux ISO ")
+& " - MBR - use Addon to Install a1ive Grub2 Boot Manager - All Linux ISO ")
 GUICtrlCreateLabel( "Grub2 Mgr", 328, 212)
 $Combo_EFI = GUICtrlCreateCombo("", 238, 209, 80, 24, $CBS_DROPDOWNLIST)
 GUICtrlSetData($Combo_EFI,"Mint   UEFI|Super UEFI|Mint + MBR|Sup + MBR|MBR  Only", "Mint   UEFI")
@@ -147,7 +148,7 @@ GUICtrlSetTip($Combo_EFI, " Add Grub2 Boot Manager for UEFI and MBR mode and Lin
 & " - Mint   UEFI - Only for some Linux ISO Files in images folder " & @CRLF _
 & " - Super UEFI - use Addon with a1ive Grub2 File Manager " & @CRLF _
 & "   and Grub2 Live ISO Multiboot Menu for All Linux in iso folder " & @CRLF _
-& " - MBR  Only - use Addon with a1ive Grub2 File Manager - All Linux ISO ")
+& " - MBR - use Addon to Install a1ive Grub2 Boot Manager - All Linux ISO ")
 
 $Reversed_PartLayout = GUICtrlCreateCheckbox("", 32, 210, 17, 17)
 GUICtrlSetTip($Reversed_PartLayout, " Reversed Partition Layout - Max Disk Size 128 GB " _
@@ -261,7 +262,7 @@ Func CheckGo()
 
 	If $TargetDrive <> "" Then
 		GUICtrlSetState($FormUSB, $GUI_ENABLE)
-		_GUICtrlStatusBar_SetText($hStatus," Use Format Drive to Erase and Format USB Drive", 0)
+		_GUICtrlStatusBar_SetText($hStatus," Use Format Drive to Quick Erase and Format USB Drive", 0)
 	Else
 		If GUICtrlRead($FormUSB) = $GUI_ENABLE Then
 			GUICtrlSetState($FormUSB, $GUI_DISABLE)
@@ -976,6 +977,10 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 		ElseIf GUICtrlRead($Combo_EFI) = "Super UEFI" Or GUICtrlRead($Combo_EFI) = "Sup + MBR" Then
 			_GUICtrlStatusBar_SetText($hStatus," Adding Super Grub2 EFI Manager - wait .... ", 0)
 			DirCopy(@ScriptDir & "\UEFI_MAN\efi", $TargetDrive & "\efi", 1)
+			DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\x86_64-efi", $TargetDrive & "\efi\grub\x86_64-efi", 1)
+			DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\i386-efi", $TargetDrive & "\efi\grub\i386-efi", 1)
+			DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\locale", $TargetDrive & "\efi\grub\locale", 1)
+			DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\fonts", $TargetDrive & "\efi\grub\fonts", 1)
 			;	If FileExists(@ScriptDir & "\UEFI_MAN\grub2") Then
 			;		GUICtrlSetData($ProgressAll, 85)
 			;		_GUICtrlStatusBar_SetText($hStatus," Adding Grub2Win for BIOS mode - wait .... ", 0)
