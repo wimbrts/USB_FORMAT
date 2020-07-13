@@ -2,7 +2,7 @@
 #cs ----------------------------------------------------------------------------
 
 AutoIt Version: 3.3.14.5
- Author:        WIMB  -  July 10, 2020
+ Author:        WIMB  -  July 12, 2020
 
  Program:       USB_FORMAT_x86.exe - Version 4.7 in rule 120
 
@@ -1016,12 +1016,8 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 				FileCopy(@ScriptDir & "\UEFI_MAN\boot\grub\Main.cfg", $TargetDrive & "\boot\grub\", 1)
 			Else
 				If GUICtrlRead($Combo_EFI) = "Mint   UEFI" Or GUICtrlRead($Combo_EFI) = "Mint + MBR" Then
-					FileCopy(@ScriptDir & "\UEFI_MAN\efi_mint\boot\grub.cfg", $TargetDrive & "\boot\grub\", 8)
-					FileCopy(@ScriptDir & "\UEFI_MAN\efi_mint\boot\grub_Linux.cfg", $TargetDrive & "\boot\grub\", 8)
-				ElseIf GUICtrlRead($Combo_EFI) = "Super UEFI" Or "Sup + MBR" Then
-					If FileExists(@ScriptDir & "\UEFI_MAN\efi\boot\grub.cfg") Then FileCopy(@ScriptDir & "\UEFI_MAN\efi\boot\grub.cfg", $TargetDrive & "\boot\grub\", 8)
-					If FileExists(@ScriptDir & "\UEFI_MAN\efi\boot\grub_Linux.cfg") Then FileCopy(@ScriptDir & "\UEFI_MAN\efi\boot\grub_Linux.cfg", $TargetDrive & "\boot\grub\", 8)
-				Else
+					FileCopy(@ScriptDir & "\UEFI_MAN\boot\grub\grub.cfg", $TargetDrive & "\boot\grub\", 8)
+					FileCopy(@ScriptDir & "\UEFI_MAN\boot\grub\grub_Linux.cfg", $TargetDrive & "\boot\grub\", 8)
 				EndIf
 			EndIf
 		Else
@@ -1030,12 +1026,8 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 					FileMove($TargetDrive & "\boot\grub\grub.cfg", $TargetDrive & "\boot\grub\org-grub.cfg", 1)
 				EndIf
 				If GUICtrlRead($Combo_EFI) = "Mint   UEFI" Or GUICtrlRead($Combo_EFI) = "Mint + MBR" Then
-					FileCopy(@ScriptDir & "\UEFI_MAN\efi_mint\boot\grub.cfg", $TargetDrive & "\boot\grub\", 1)
-					FileCopy(@ScriptDir & "\UEFI_MAN\efi_mint\boot\grub_Linux.cfg", $TargetDrive & "\boot\grub\", 1)
-				ElseIf GUICtrlRead($Combo_EFI) = "Super UEFI" Or GUICtrlRead($Combo_EFI) = "Sup + MBR" Then
-					If FileExists(@ScriptDir & "\UEFI_MAN\efi\boot\grub.cfg") Then FileCopy(@ScriptDir & "\UEFI_MAN\efi\boot\grub.cfg", $TargetDrive & "\boot\grub\", 1)
-					If FileExists(@ScriptDir & "\UEFI_MAN\efi\boot\grub_Linux.cfg") Then FileCopy(@ScriptDir & "\UEFI_MAN\efi\boot\grub_Linux.cfg", $TargetDrive & "\boot\grub\", 1)
-				Else
+					FileCopy(@ScriptDir & "\UEFI_MAN\boot\grub\grub.cfg", $TargetDrive & "\boot\grub\", 1)
+					FileCopy(@ScriptDir & "\UEFI_MAN\boot\grub\grub_Linux.cfg", $TargetDrive & "\boot\grub\", 1)
 				EndIf
 			EndIf
 		EndIf
