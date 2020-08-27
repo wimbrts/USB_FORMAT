@@ -2,9 +2,9 @@
 #cs ----------------------------------------------------------------------------
 
 AutoIt Version: 3.3.14.5
- Author:        WIMB  -  July 12, 2020
+ Author:        WIMB  -  August 25, 2020
 
- Program:       USB_FORMAT_x86.exe - Version 4.7 in rule 120
+ Program:       USB_FORMAT_x86.exe - Version 4.8 in rule 120
 
  Script Function
 	can be used to Format USB Drive for Booting with Windows Boot Manager Menu and /or Grub2 Boot Manager in MBR BIOS or UEFI mode and
@@ -117,9 +117,9 @@ $hGuiParent = GUICreate(" USB_FORMAT x86 - Tool to Make Bootable USB Drive", 400
 GUISetOnEvent($GUI_EVENT_CLOSE, "_Quit")
 
 If $PE_flag = 1 Then
-	GUICtrlCreateGroup("USB FORMAT - Version 4.7  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware & "  PE", 18, 10, 364, 150)
+	GUICtrlCreateGroup("USB FORMAT - Version 4.8  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware & "  PE", 18, 10, 364, 150)
 Else
-	GUICtrlCreateGroup("USB FORMAT - Version 4.7  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 150)
+	GUICtrlCreateGroup("USB FORMAT - Version 4.8  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 150)
 EndIf
 
 GUICtrlCreateLabel( "1 - Format USB Drive with MBR and 2 Partitions FAT32 + NTFS", 32, 37)
@@ -996,6 +996,7 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 		; MBR BIOS mode cases - Install Grub2 in MBR
 		If GUICtrlRead($Combo_EFI) = "Mint + MBR" Or GUICtrlRead($Combo_EFI) = "Sup + MBR" Or GUICtrlRead($Combo_EFI) = "MBR  Only" And FileExists(@ScriptDir & "\UEFI_MAN\grub_a1\grub-install.exe") And $inst_disk <> "" Then
 			_GUICtrlStatusBar_SetText($hStatus," Adding a1ive Grub2 Manager in MBR - wait .... ", 0)
+			; Grub2 Install OK if $g2_inst = 0
 			$g2_inst = RunWait(@ComSpec & " /c UEFI_MAN\grub_a1\grub-install.exe  --boot-directory=" & $TargetDrive & "\ --target=i386-pc //./PHYSICALDRIVE" & $inst_disk, @ScriptDir, @SW_HIDE)
 			;	MsgBox(48, "Grub2 in MBR", "Grub2 Installed in MBR - $g2_inst = " & $g2_inst & @CRLF & @CRLF _
 			;	& "Target Drive = " & $TargetDrive & "   HDD = " & $inst_disk & @CRLF & @CRLF & "Bus Type = " & $BusType & "   Drive Type = " & $DriveType)
@@ -1032,6 +1033,15 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 			EndIf
 		EndIf
 		GUICtrlSetData($ProgressAll, 90)
+		; MBR BIOS mode Grub2 System support
+		If Not FileExists($TargetDrive & "\grub\core.img") And FileExists(@ScriptDir & "\UEFI_MAN\grub_mbr_cfg\core.img") Then
+			_GUICtrlStatusBar_SetText($hStatus," Adding MBR BIOS a1ive Grub2 System - wait .... ", 0)
+			DirCopy(@ScriptDir & "\UEFI_MAN\grub_mbr_cfg", $TargetDrive & "\grub", 1)
+			DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\i386-pc", $TargetDrive & "\grub\i386-pc", 1)
+			DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\locale", $TargetDrive & "\grub\locale", 1)
+			DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\fonts", $TargetDrive & "\grub\fonts", 1)
+		EndIf
+		If Not FileExists($TargetDrive & "\iso") And FileExists(@ScriptDir & "\UEFI_MAN\iso") Then DirCopy(@ScriptDir & "\UEFI_MAN\iso", $TargetDrive & "\iso", 1)
 		; make folder images for Linux ISO files
 		If Not FileExists($TargetDrive & "\images") Then DirCreate($TargetDrive & "\images")
 		If Not FileExists($TargetDrive & "\images\Linux_ISO_Files.txt") Then FileCopy(@ScriptDir & "\makebt\Linux_ISO_Files.txt", $TargetDrive & "\images\", 1)
