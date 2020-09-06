@@ -2,9 +2,9 @@
 #cs ----------------------------------------------------------------------------
 
 AutoIt Version: 3.3.14.5
- Author:        WIMB  -  August 30, 2020
+ Author:        WIMB  -  September 05, 2020
 
- Program:       USB_FORMAT_x86.exe - Version 4.8 in rule 120
+ Program:       USB_FORMAT_x86.exe - Version 5.0 in rule 120
 
  Script Function
 	can be used to Format USB Drive for Booting with Windows Boot Manager Menu and /or Grub2 Boot Manager in MBR BIOS or UEFI mode and
@@ -117,9 +117,9 @@ $hGuiParent = GUICreate(" USB_FORMAT x86 - Tool to Make Bootable USB Drive", 400
 GUISetOnEvent($GUI_EVENT_CLOSE, "_Quit")
 
 If $PE_flag = 1 Then
-	GUICtrlCreateGroup("USB FORMAT - Version 4.8  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware & "  PE", 18, 10, 364, 150)
+	GUICtrlCreateGroup("USB FORMAT - Version 5.0  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware & "  PE", 18, 10, 364, 150)
 Else
-	GUICtrlCreateGroup("USB FORMAT - Version 4.8  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 150)
+	GUICtrlCreateGroup("USB FORMAT - Version 5.0  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 150)
 EndIf
 
 GUICtrlCreateLabel( "1 - Format USB Drive with MBR and 2 Partitions FAT32 + NTFS", 32, 37)
@@ -138,7 +138,7 @@ GUICtrlSetTip($Combo_2nd, " Only for Windows 10 and Removable Devices " _
 $refind = GUICtrlCreateCheckbox("", 204, 210, 17, 17)
 GUICtrlSetTip($refind, " Add Grub2 Boot Manager for UEFI and MBR mode and Linux ISO " & @CRLF _
 & " - Mint   UEFI - Only for some Linux ISO Files in images folder " & @CRLF _
-& " - Super UEFI - use Addon with a1ive Grub2 File Manager " & @CRLF _
+& " - Super UEFI - use Addon with a1ive Grub2 Boot Manager " & @CRLF _
 & "   and Grub2 Live ISO Multiboot Menu for All Linux in iso folder " & @CRLF _
 & " - MBR - use Addon to Install a1ive Grub2 Boot Manager - All Linux ISO ")
 GUICtrlCreateLabel( "Grub2 Mgr", 328, 212)
@@ -152,7 +152,7 @@ Else
 EndIf
 GUICtrlSetTip($Combo_EFI, " Add Grub2 Boot Manager for UEFI and MBR mode and Linux ISO " & @CRLF _
 & " - Mint   UEFI - Only for some Linux ISO Files in images folder " & @CRLF _
-& " - Super UEFI - use Addon with a1ive Grub2 File Manager " & @CRLF _
+& " - Super UEFI - use Addon with a1ive Grub2 Boot Manager " & @CRLF _
 & "   and Grub2 Live ISO Multiboot Menu for All Linux in iso folder " & @CRLF _
 & " - MBR - use Addon to Install a1ive Grub2 Boot Manager - All Linux ISO ")
 
@@ -971,23 +971,25 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 			If FileExists($TargetDrive & "\efi\boot\grubx64.efi") And Not FileExists($TargetDrive & "\efi\boot\org-grubx64.efi") Then
 				FileMove($TargetDrive & "\efi\boot\grubx64.efi", $TargetDrive & "\efi\boot\org-grubx64.efi", 1)
 			EndIf
-			If FileExists($TargetDrive & "\efi\boot\grub.cfg") And Not FileExists($TargetDrive & "\efi\boot\org-grub.cfg") Then
-				FileMove($TargetDrive & "\efi\boot\grub.cfg", $TargetDrive & "\efi\boot\org-grub.cfg", 1)
-			EndIf
 		EndIf
 		; Settings "Mint   UEFI|Super UEFI|Mint + MBR|Super + MBR|MBR  Only"
 		If GUICtrlRead($Combo_EFI) = "Mint   UEFI" Or GUICtrlRead($Combo_EFI) = "Mint + MBR" Then
 			_GUICtrlStatusBar_SetText($hStatus," Adding Linux Mint Grub2 EFI Manager - wait .... ", 0)
 			DirCopy(@ScriptDir & "\UEFI_MAN\efi_mint", $TargetDrive & "\efi", 1)
+			If FileExists($TargetDrive & "\boot\grub\grub.cfg") Then
+				FileMove($TargetDrive & "\boot\grub\grub.cfg", $TargetDrive & "\boot\grub\org-grub.cfg", 1)
+			EndIf
+			FileCopy(@ScriptDir & "\UEFI_MAN\boot\grub\grub.cfg", $TargetDrive & "\boot\grub\", 9)
+			FileCopy(@ScriptDir & "\UEFI_MAN\boot\grub\grub_Linux.cfg", $TargetDrive & "\boot\grub\", 9)
 			; If Not FileExists($TargetDrive & "\grubfm.iso") And FileExists(@ScriptDir & "\UEFI_MAN\grubfm.iso") Then FileCopy(@ScriptDir & "\UEFI_MAN\grubfm.iso", $TargetDrive & "\", 1)
 		ElseIf GUICtrlRead($Combo_EFI) = "Super UEFI" Or GUICtrlRead($Combo_EFI) = "Super + MBR" Then
 			_GUICtrlStatusBar_SetText($hStatus," Adding Super Grub2 EFI Manager - wait .... ", 0)
 			DirCopy(@ScriptDir & "\UEFI_MAN\efi", $TargetDrive & "\efi", 1)
 			If FileExists(@ScriptDir & "\UEFI_MAN\grub_a1") Then
-				DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\x86_64-efi", $TargetDrive & "\efi\grub\x86_64-efi", 1)
-				DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\i386-efi", $TargetDrive & "\efi\grub\i386-efi", 1)
-				DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\locale", $TargetDrive & "\efi\grub\locale", 1)
-				DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\fonts", $TargetDrive & "\efi\grub\fonts", 1)
+				DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\x86_64-efi", $TargetDrive & "\grub\x86_64-efi", 1)
+				DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\i386-efi", $TargetDrive & "\grub\i386-efi", 1)
+;~ 				DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\locale", $TargetDrive & "\grub\locale", 1)
+;~ 				DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\fonts", $TargetDrive & "\grub\fonts", 1)
 			EndIf
 			;	If FileExists(@ScriptDir & "\UEFI_MAN\grub2") Then
 			;		GUICtrlSetData($ProgressAll, 85)
@@ -1008,43 +1010,18 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 			$g2_inst = RunWait(@ComSpec & " /c UEFI_MAN\grub_a1\grub-install.exe  --boot-directory=" & $TargetDrive & "\ --target=i386-pc //./PHYSICALDRIVE" & $inst_disk, @ScriptDir, @SW_HIDE)
 			;	MsgBox(48, "Grub2 in MBR", "Grub2 Installed in MBR - $g2_inst = " & $g2_inst & @CRLF & @CRLF _
 			;	& "Target Drive = " & $TargetDrive & "   HDD = " & $inst_disk & @CRLF & @CRLF & "Bus Type = " & $BusType & "   Drive Type = " & $DriveType)
-			; DirCopy(@ScriptDir & "\UEFI_MAN\grub_mbr_cfg", $TargetDrive & "\grub", 1)
-			; If Not FileExists($TargetDrive & "\grubfm.iso") And FileExists(@ScriptDir & "\UEFI_MAN\grubfm.iso") Then FileCopy(@ScriptDir & "\UEFI_MAN\grubfm.iso", $TargetDrive & "\", 1)
-			; If GUICtrlRead($Combo_EFI) = "Mint + MBR"  Or GUICtrlRead($Combo_EFI) = "MBR  Only" Then
-			; 	DirCopy(@ScriptDir & "\UEFI_MAN\iso", $TargetDrive & "\iso", 1)
-			; EndIf
 		EndIf
 
-		; _GUICtrlStatusBar_SetText($hStatus," Adding Grub Config - wait .... ", 0)
-		If Not FileExists($TargetDrive & "\boot\grub\grub.cfg") Then
-			If FileExists($TargetDrive & "\AIO\grub\grub.cfg") And Not FileExists($TargetDrive & "\boot\grub\Main.cfg") Then
-				DirCopy($TargetDrive & "\AIO\grub", $TargetDrive& "\boot\grub", 1)
-				If FileExists($TargetDrive & "\boot\grub\Main.cfg") Then
-					FileMove($TargetDrive & "\boot\grub\Main.cfg", $TargetDrive & "\boot\grub\org-Main.cfg", 1)
-				EndIf
-				FileCopy(@ScriptDir & "\UEFI_MAN\boot\grub\Main.cfg", $TargetDrive & "\boot\grub\", 1)
-			Else
-				If GUICtrlRead($Combo_EFI) = "Mint   UEFI" Or GUICtrlRead($Combo_EFI) = "Mint + MBR" Then
-					FileCopy(@ScriptDir & "\UEFI_MAN\boot\grub\grub.cfg", $TargetDrive & "\boot\grub\", 8)
-					FileCopy(@ScriptDir & "\UEFI_MAN\boot\grub\grub_Linux.cfg", $TargetDrive & "\boot\grub\", 8)
-				EndIf
-			EndIf
-		Else
-			If Not FileExists($TargetDrive & "\AIO\grub\grub.cfg") And Not FileExists($TargetDrive & "\boot\grub\Main.cfg") Then
-				If FileExists($TargetDrive & "\boot\grub\grub.cfg") Then
-					FileMove($TargetDrive & "\boot\grub\grub.cfg", $TargetDrive & "\boot\grub\org-grub.cfg", 1)
-				EndIf
-				If GUICtrlRead($Combo_EFI) = "Mint   UEFI" Or GUICtrlRead($Combo_EFI) = "Mint + MBR" Then
-					FileCopy(@ScriptDir & "\UEFI_MAN\boot\grub\grub.cfg", $TargetDrive & "\boot\grub\", 1)
-					FileCopy(@ScriptDir & "\UEFI_MAN\boot\grub\grub_Linux.cfg", $TargetDrive & "\boot\grub\", 1)
-				EndIf
-			EndIf
-		EndIf
 		GUICtrlSetData($ProgressAll, 90)
-		; MBR BIOS mode Grub2 System support
-		If Not FileExists($TargetDrive & "\grub\core.img") Or Not FileExists($TargetDrive & "\grub\grub.cfg") And FileExists(@ScriptDir & "\UEFI_MAN\grub_mbr_cfg\grub.cfg") Then
-			_GUICtrlStatusBar_SetText($hStatus," Adding MBR BIOS a1ive Grub2 System - wait .... ", 0)
+		If FileExists(@ScriptDir & "\UEFI_MAN\grub_mbr_cfg") Then
+			If FileExists($TargetDrive & "\grub\grub.cfg") And Not FileExists($TargetDrive & "\grub\org-grub.cfg") Then
+				FileMove($TargetDrive & "\grub\grub.cfg", $TargetDrive & "\grub\org-grub.cfg", 1)
+			EndIf
 			DirCopy(@ScriptDir & "\UEFI_MAN\grub_mbr_cfg", $TargetDrive & "\grub", 1)
+		EndIf
+		; MBR BIOS mode Grub2 System support
+		If Not FileExists($TargetDrive & "\grub\i386-pc") Or Not FileExists($TargetDrive & "\grub\fonts") And FileExists(@ScriptDir & "\UEFI_MAN\grub_a1") Then
+			_GUICtrlStatusBar_SetText($hStatus," Adding MBR BIOS a1ive Grub2 System - wait .... ", 0)
 			DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\i386-pc", $TargetDrive & "\grub\i386-pc", 1)
 			DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\locale", $TargetDrive & "\grub\locale", 1)
 			DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\fonts", $TargetDrive & "\grub\fonts", 1)
