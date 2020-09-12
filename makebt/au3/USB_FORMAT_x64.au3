@@ -2,7 +2,7 @@
 #cs ----------------------------------------------------------------------------
 
 AutoIt Version: 3.3.14.5
- Author:        WIMB  -  September 05, 2020
+ Author:        WIMB  -  September 09, 2020
 
  Program:       USB_FORMAT_x64.exe - Version 5.0 in rule 120
 
@@ -1030,6 +1030,10 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 		; make folder images for Linux ISO files
 		If Not FileExists($TargetDrive & "\images") Then DirCreate($TargetDrive & "\images")
 		If Not FileExists($TargetDrive & "\images\Linux_ISO_Files.txt") Then FileCopy(@ScriptDir & "\makebt\Linux_ISO_Files.txt", $TargetDrive & "\images\", 1)
+		If Not FileExists($TargetDrive & "\images\kali-linux\persistence.7z") Then FileCopy(@ScriptDir & "\images\kali-linux\persistence.7z", $TargetDrive & "\images\kali-linux\", 9)
+		If Not FileExists($TargetDrive & "\images\linuxmint\writable.7z") Then FileCopy(@ScriptDir & "\images\linuxmint\writable.7z", $TargetDrive & "\images\linuxmint\", 9)
+		If Not FileExists($TargetDrive & "\images\porteus\data.7z") Then FileCopy(@ScriptDir & "\images\porteus\data.7z", $TargetDrive & "\images\porteus\", 9)
+		If Not FileExists($TargetDrive & "\images\ubuntu\writable.7z") Then FileCopy(@ScriptDir & "\images\ubuntu\writable.7z", $TargetDrive & "\images\ubuntu\", 9)
 		; Add \AIO\grub\grub2win to \Boot\BCD Menu for BIOS support of Grub2
 		If FileExists($TargetDrive & "\AIO\grub\grub2win") And GUICtrlRead($Bootmgr_Menu) = $GUI_CHECKED Then
 			_bcd_grub2()
@@ -1051,6 +1055,10 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 		; make folder images for Linux ISO files
 		If Not FileExists($TargetDrive & "\images") Then DirCreate($TargetDrive & "\images")
 		If Not FileExists($TargetDrive & "\images\Linux_ISO_Files.txt") Then FileCopy(@ScriptDir & "\makebt\Linux_ISO_Files.txt", $TargetDrive & "\images\", 1)
+		If Not FileExists($TargetDrive & "\images\kali-linux\persistence.7z") Then FileCopy(@ScriptDir & "\images\kali-linux\persistence.7z", $TargetDrive & "\images\kali-linux\", 9)
+		If Not FileExists($TargetDrive & "\images\linuxmint\writable.7z") Then FileCopy(@ScriptDir & "\images\linuxmint\writable.7z", $TargetDrive & "\images\linuxmint\", 9)
+		If Not FileExists($TargetDrive & "\images\porteus\data.7z") Then FileCopy(@ScriptDir & "\images\porteus\data.7z", $TargetDrive & "\images\porteus\", 9)
+		If Not FileExists($TargetDrive & "\images\ubuntu\writable.7z") Then FileCopy(@ScriptDir & "\images\ubuntu\writable.7z", $TargetDrive & "\images\ubuntu\", 9)
 		FileSetAttrib($TargetDrive & "\menu.lst", "-RSH")
 		If GUICtrlRead($Bootmgr_Menu) = $GUI_CHECKED Then
 			_g4d_bcd_menu()
