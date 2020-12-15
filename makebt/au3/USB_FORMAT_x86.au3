@@ -2,9 +2,9 @@
 #cs ----------------------------------------------------------------------------
 
 AutoIt Version: 3.3.14.5
- Author:        WIMB  -  September 09, 2020
+ Author:        WIMB  -  December 15, 2020
 
- Program:       USB_FORMAT_x86.exe - Version 5.0 in rule 120
+ Program:       USB_FORMAT_x86.exe - Version 5.1 in rule 127
 
  Script Function
 	can be used to Format USB Drive for Booting with Windows Boot Manager Menu and /or Grub2 Boot Manager in MBR BIOS or UEFI mode and
@@ -14,11 +14,16 @@ AutoIt Version: 3.3.14.5
 
  Credits and Thanks to:
 	Uwe Sieber for making ListUsbDrives - http://www.uwe-sieber.de/english.html
-	a1ive for making Grub2 Boot Manager - https://github.com/a1ive/grub/releases
+	a1ive for making Grub2 Boot Manager - https://github.com/a1ive/grub/releases and http://reboot.pro/topic/22400-grub4dos-for-uefi/
 	a1ive for making Grub2 File Manager - https://github.com/a1ive/grub2-filemanager/releases
 	ValdikSS for making Super UEFIinSecureBoot Disk v3 - https://github.com/ValdikSS/Super-UEFIinSecureBoot-Disk/releases
 	Matthias Saou - thias - for making glim - https://github.com/thias/glim
-	chenall for making Grub4dos - https://github.com/chenall/grub4dos/releases and http://grub4dos.chenall.net/categories/downloads/
+	chenall, yaya, tinybit and Bean for making Grub4dos - https://github.com/chenall/grub4dos/releases and http://grub4dos.chenall.net/categories/downloads/
+	yaya2007 for making UEFI Grub4dos - https://github.com/chenall/grub4dos/releases and http://grub4dos.chenall.net/categories/downloads/
+	alacran for support and info - http://reboot.pro/topic/21957-making-the-smallest-win10-install-wimboot-mode-on-512-mb-vhd/
+		and http://reboot.pro/topic/21972-reducing-wimboot-source-wim-file-using-lzx-compression-and-vhd-using-gzip-or-lz4-compression-to-save-room-and-also-load-faster-on-ram/
+	alacran for starting topic on Reducing Win10 - http://reboot.pro/topic/22383-reducing-win10-and-older-oss-footprint/
+	cdob for making WinSxS_reduce with base_winsxs.cmd - http://reboot.pro/topic/22281-get-alladafluff-out/page-3#entry215317
 
 	The program is released "as is" and is free for redistribution, use or changes as long as original author,
 	credits part and link to the reboot.pro and MSFN support forum are clearly mentioned
@@ -59,8 +64,10 @@ Global $inst_disk="", $inst_part="", $disk_size="", $vol_size="", $disk_GB = 15,
 Global $bcdedit="", $winload = "winload.exe", $bcd_guid_outfile = "makebt\bs_temp\pe_guid.txt", $store = "", $WinLang = "en-US", $vhdfile_name = "Win10x64.vhd"
 Global $sdi_guid_outfile = "makebt\bs_temp\sdi_guid.txt"
 
-Global $str = "", $bt_files[10] = ["\makebt\listusbdrives\ListUsbDrives.exe", "\makebt\grldr.mbr", "\makebt\grldr", "\makebt\menu.lst", "\makebt\menu_Win_ISO.lst", _
-"\makebt\menu_Linux.lst", "\UEFI_MAN\efi", "\UEFI_MAN\efi_mint", "\makebt\Linux_ISO_Files.txt", "\makebt\grub.exe"]
+Global $str = "", $bt_files[18] = ["\makebt\listusbdrives\ListUsbDrives.exe", "\makebt\grldr.mbr", "\makebt\grldr", "\makebt\menu.lst", "\makebt\menu_Win_ISO.lst", _
+"\makebt\menu_Linux.lst", "\UEFI_MAN\efi", "\UEFI_MAN\efi_mint", "\makebt\Linux_ISO_Files.txt", "\makebt\grub.exe", _
+"\UEFI_MAN\EFI\grub\menu.lst", "\UEFI_MAN\grub\grub.cfg", "\UEFI_MAN\grub\grub_Linux.cfg", "\UEFI_MAN\grub\core.img", _
+"\UEFI_MAN\EFI\Boot\bootx64_g4d.efi", "\UEFI_MAN\EFI\Boot\bootia32_g4d.efi", "\UEFI_MAN\EFI\Boot\grubx64_real.efi", "\UEFI_MAN\EFI\Boot\grubia32_real.efi"]
 
 If @OSArch <> "X86" Then
    MsgBox(48, "ERROR - Environment", "In x64 environment use USB_FORMAT_x64.exe ")
@@ -117,9 +124,9 @@ $hGuiParent = GUICreate(" USB_FORMAT x86 - Tool to Make Bootable USB Drive", 400
 GUISetOnEvent($GUI_EVENT_CLOSE, "_Quit")
 
 If $PE_flag = 1 Then
-	GUICtrlCreateGroup("USB FORMAT - Version 5.0  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware & "  PE", 18, 10, 364, 150)
+	GUICtrlCreateGroup("USB FORMAT - Version 5.1  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware & "  PE", 18, 10, 364, 150)
 Else
-	GUICtrlCreateGroup("USB FORMAT - Version 5.0  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 150)
+	GUICtrlCreateGroup("USB FORMAT - Version 5.1  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 150)
 EndIf
 
 GUICtrlCreateLabel( "1 - Format USB Drive with MBR and 2 Partitions FAT32 + NTFS", 32, 37)
@@ -138,7 +145,7 @@ GUICtrlSetTip($Combo_2nd, " Only for Windows 10 and Removable Devices " _
 $refind = GUICtrlCreateCheckbox("", 204, 210, 17, 17)
 GUICtrlSetTip($refind, " Add Grub2 Boot Manager for UEFI and MBR mode and Linux ISO " & @CRLF _
 & " - Mint   UEFI - Only for some Linux ISO Files in images folder " & @CRLF _
-& " - Super UEFI - use Addon with a1ive Grub2 Boot Manager " & @CRLF _
+& " - Super UEFI Secure - use Addon with a1ive Grub2 Boot Manager " & @CRLF _
 & "   and Grub2 Live ISO Multiboot Menu for All Linux in iso folder " & @CRLF _
 & " - MBR - use Addon to Install a1ive Grub2 Boot Manager - All Linux ISO ")
 GUICtrlCreateLabel( "Grub2 Mgr", 328, 212)
@@ -152,7 +159,7 @@ Else
 EndIf
 GUICtrlSetTip($Combo_EFI, " Add Grub2 Boot Manager for UEFI and MBR mode and Linux ISO " & @CRLF _
 & " - Mint   UEFI - Only for some Linux ISO Files in images folder " & @CRLF _
-& " - Super UEFI - use Addon with a1ive Grub2 Boot Manager " & @CRLF _
+& " - Super UEFI Secure - use Addon with a1ive Grub2 Boot Manager " & @CRLF _
 & "   and Grub2 Live ISO Multiboot Menu for All Linux in iso folder " & @CRLF _
 & " - MBR - use Addon to Install a1ive Grub2 Boot Manager - All Linux ISO ")
 
@@ -179,7 +186,8 @@ GUICtrlCreateLabel( "Add PE to Boot Manager", 52, 262)
 
 $Bootmgr_Menu = GUICtrlCreateCheckbox("", 204, 260, 17, 17)
 GUICtrlSetTip($Bootmgr_Menu, " Make USB Drive bootable with Windows Boot Manager and " _
-& @CRLF & " Grub4dos Menu entry for booting VHD or Linux ISO in BIOS mode ")
+& @CRLF & " Grub4dos Menu entry for booting VHD or Linux ISO in BIOS mode " _
+& @CRLF & " Add Support for UEFI Grub2 and UEFI Grub4dos Menu ")
 GUICtrlCreateLabel( "Make Boot Manager Menu", 228, 262)
 
 GUICtrlCreateGroup("Target USB Drive", 18, 290, 364, 54)
@@ -957,8 +965,8 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 	; Only on USB Drives
 	If $usbfix And GUICtrlRead($refind) = $GUI_CHECKED Then
 		If GUICtrlRead($Combo_EFI) <> "MBR  Only" Then
-			If FileExists($TargetDrive & "\efi\boot\bootx64.efi") And Not FileExists($TargetDrive & "\efi\boot\org-bootx64.efi") Then
-				FileMove($TargetDrive & "\efi\boot\bootx64.efi", $TargetDrive & "\efi\boot\org-bootx64.efi", 1)
+			If FileExists($TargetDrive & "\efi\boot\bootx64.efi") And Not FileExists($TargetDrive & "\efi\boot\bootx64_win.efi") Then
+				FileMove($TargetDrive & "\efi\boot\bootx64.efi", $TargetDrive & "\efi\boot\bootx64_win.efi", 1)
 			EndIf
 			If GUICtrlRead($Combo_EFI) = "Super UEFI" Or GUICtrlRead($Combo_EFI) = "Super + MBR" And FileExists($TargetDrive & "\efi\boot\bootia32.efi") And Not FileExists($TargetDrive & "\efi\boot\org-bootia32.efi") Then
 				FileMove($TargetDrive & "\efi\boot\bootia32.efi", $TargetDrive & "\efi\boot\org-bootia32.efi", 1)
@@ -1052,6 +1060,33 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 		If Not FileExists($TargetDrive & "\menu_Linux.lst") Then FileCopy(@ScriptDir & "\makebt\menu_Linux.lst", $TargetDrive & "\", 1)
 		If Not FileExists($TargetDrive & "\menu_Win_ISO.lst") Then FileCopy(@ScriptDir & "\makebt\menu_Win_ISO.lst", $TargetDrive & "\", 1)
 		If Not FileExists($TargetDrive & "\grubfm.iso") And FileExists(@ScriptDir & "\UEFI_MAN\grubfm.iso") Then FileCopy(@ScriptDir & "\UEFI_MAN\grubfm.iso", $TargetDrive & "\", 1)
+		If Not FileExists($TargetDrive & "\grub\core.img") Then
+			FileCopy(@ScriptDir & "\UEFI_MAN\grub\core.img", $TargetDrive & "\grub\", 9)
+		EndIf
+
+		; support UEFI Grub2
+		If Not FileExists($TargetDrive & "\grub\grub.cfg") Then
+			FileCopy(@ScriptDir & "\UEFI_MAN\grub\grub.cfg", $TargetDrive & "\grub\", 9)
+			FileCopy(@ScriptDir & "\UEFI_MAN\grub\grub_Linux.cfg", $TargetDrive & "\grub\", 9)
+		EndIf
+		If Not FileExists($TargetDrive & "\EFI\Boot\grubx64_real.efi") Then
+			FileCopy(@ScriptDir & "\UEFI_MAN\EFI\Boot\grubx64_real.efi", $TargetDrive & "\EFI\Boot\", 9)
+		EndIf
+		If Not FileExists($TargetDrive & "\EFI\Boot\grubia32_real.efi") Then
+			FileCopy(@ScriptDir & "\UEFI_MAN\EFI\Boot\grubia32_real.efi", $TargetDrive & "\EFI\Boot\", 9)
+		EndIf
+
+		; support UEFI Grub4dos
+		If Not FileExists($TargetDrive & "\EFI\grub\menu.lst") Then
+			FileCopy(@ScriptDir & "\UEFI_MAN\EFI\grub\menu.lst", $TargetDrive & "\EFI\grub\", 9)
+		EndIf
+		If Not FileExists($TargetDrive & "\EFI\Boot\bootx64_g4d.efi") Then
+			FileCopy(@ScriptDir & "\UEFI_MAN\EFI\Boot\bootx64_g4d.efi", $TargetDrive & "\EFI\Boot\", 9)
+		EndIf
+		If Not FileExists($TargetDrive & "\EFI\Boot\bootia32_g4d.efi") Then
+			FileCopy(@ScriptDir & "\UEFI_MAN\EFI\Boot\bootia32_g4d.efi", $TargetDrive & "\EFI\Boot\", 9)
+		EndIf
+
 		; make folder images for Linux ISO files
 		If Not FileExists($TargetDrive & "\images") Then DirCreate($TargetDrive & "\images")
 		If Not FileExists($TargetDrive & "\images\Linux_ISO_Files.txt") Then FileCopy(@ScriptDir & "\makebt\Linux_ISO_Files.txt", $TargetDrive & "\images\", 1)
