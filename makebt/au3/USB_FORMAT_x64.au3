@@ -2,7 +2,7 @@
 #cs ----------------------------------------------------------------------------
 
 AutoIt Version: 3.3.14.5
- Author:        WIMB  -  December 15, 2020
+ Author:        WIMB  -  December 16, 2020
 
  Program:       USB_FORMAT_x64.exe - Version 5.1 in rule 127
 
@@ -55,7 +55,7 @@ Opt("TrayIconHide", 1)
 
 ; Setting variables
 Global $TargetDrive="", $ProgressAll, $hStatus, $TargetSize, $TargetFree, $FSvar="", $WinLang = "en-US", $PE_flag = 0, $Firmware = ""
-Global $hGuiParent, $EXIT, $TargetSel, $Target, $BootLoader, $Bootmgr_Menu, $Allow_Fixed_USB, $Reversed_PartLayout, $Add_PE_Menu, $Add_VHD_Menu
+Global $hGuiParent, $EXIT, $TargetSel, $Target, $BootLoader, $Bootmgr_Menu, $Allow_Fixed_USB, $Reversed_PartLayout, $Add_PE_Menu, $Add_VHD_Menu, $Add_Grub2_Sys
 Global $DriveType="Fixed", $usbfix=0, $bcdedit="", $refind, $Combo_EFI, $WinDir_PE="D:\Windows", $WinDir_PE_flag=0, $BusType = "", $g2_inst=1
 
 Global $Target_Device, $Target_Type, $FormUSB, $Combo_2nd, $f32_size="10240", $ntfs_size="", $NTFS_Drive = ""
@@ -135,12 +135,19 @@ GUICtrlCreateLabel( "3 - Copy Linux ISO files to folder images on FAT32 - boot U
 GUICtrlCreateLabel( "4 - USB drive Booting with Boot Manager Menu in BIOS or UEFI Mode", 32, 127)
 
 GUICtrlCreateLabel( "FAT32  Size", 32, 182)
-GUICtrlCreateLabel( "FAT32   MAX = 32 GB   MIN = 1 GB", 180, 182)
+; GUICtrlCreateLabel( "FAT32   MAX = 32 GB   MIN = 1 GB", 180, 182)
 
 $Combo_2nd = GUICtrlCreateCombo("", 105, 177, 60, 24, $CBS_DROPDOWNLIST)
 GUICtrlSetData($Combo_2nd,"MIN|25 %|50 %|75 %|MAX", "50 %")
 GUICtrlSetTip($Combo_2nd, " Only for Windows 10 and Removable Devices " _
 & @CRLF & " FAT32 MAX = 32 GB   MIN = 1 GB   Rest = NTFS")
+
+$Add_Grub2_Sys = GUICtrlCreateCheckbox("", 204, 185, 17, 17)
+GUICtrlSetTip($Add_Grub2_Sys, " Add Grub2 System Folder 12 MB - 1000 Files Often Unneeded " _
+& @CRLF & "    x64     UEFI - Add grub\x86_64-efi " _
+& @CRLF & "    ia32    UEFI - Add grub\i386-efi " _
+& @CRLF & " Legacy MBR - Add grub\i386-pc ")
+GUICtrlCreateLabel( "Add Grub2 System Folder", 228, 187)
 
 $refind = GUICtrlCreateCheckbox("", 204, 210, 17, 17)
 GUICtrlSetTip($refind, " Add Grub2 Boot Manager for UEFI and MBR mode and Linux ISO " & @CRLF _
@@ -155,7 +162,7 @@ If Not FileExists(@ScriptDir & "\UEFI_MAN\grub_a1\grub-install.exe") Or Not File
 		Or Not FileExists(@ScriptDir & "\UEFI_MAN\efi\boot\MokManager.efi") Then
 	GUICtrlSetData($Combo_EFI,"Mint   UEFI", "Mint   UEFI")
 Else
-	GUICtrlSetData($Combo_EFI,"Mint   UEFI|Super UEFI|Mint + MBR|Super + MBR|MBR  Only", "Mint   UEFI")
+	GUICtrlSetData($Combo_EFI,"Mint   UEFI|Super UEFI|Mint + MBR|Super + MBR|MBR  Only", "Super UEFI")
 EndIf
 GUICtrlSetTip($Combo_EFI, " Add Grub2 Boot Manager for UEFI and MBR mode and Linux ISO " & @CRLF _
 & " - Mint   UEFI - Only for some Linux ISO Files in images folder " & @CRLF _
@@ -232,6 +239,11 @@ Else
 	GUICtrlSetState($Add_VHD_Menu, $GUI_DISABLE)
 EndIf
 
+If FileExists(@ScriptDir & "\UEFI_MAN\grub_a1") Then
+	GUICtrlSetState($Add_Grub2_Sys, $GUI_UNCHECKED + $GUI_ENABLE)
+Else
+	GUICtrlSetState($Add_Grub2_Sys, $GUI_DISABLE + $GUI_UNCHECKED)
+EndIf
 GUICtrlSetState($refind, $GUI_UNCHECKED + $GUI_ENABLE)
 GUICtrlSetState($Combo_EFI, $GUI_ENABLE)
 GUICtrlSetState($TargetSel, $GUI_ENABLE)
@@ -597,6 +609,11 @@ Func DisableMenus($endis)
 		; GUICtrlSetState($refind, $GUI_UNCHECKED)
 		GUICtrlSetState($Add_VHD_Menu, $GUI_UNCHECKED)
 		GUICtrlSetState($Add_PE_Menu, $GUI_UNCHECKED)
+	EndIf
+	If FileExists(@ScriptDir & "\UEFI_MAN\grub_a1") Then
+		GUICtrlSetState($Add_Grub2_Sys, $endis)
+	Else
+		GUICtrlSetState($Add_Grub2_Sys, $GUI_DISABLE + $GUI_UNCHECKED)
 	EndIf
 	GUICtrlSetState($refind, $endis)
 	GUICtrlSetState($Allow_Fixed_USB, $endis)
@@ -993,11 +1010,11 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 		ElseIf GUICtrlRead($Combo_EFI) = "Super UEFI" Or GUICtrlRead($Combo_EFI) = "Super + MBR" Then
 			_GUICtrlStatusBar_SetText($hStatus," Adding Super Grub2 EFI Manager - wait .... ", 0)
 			DirCopy(@ScriptDir & "\UEFI_MAN\efi", $TargetDrive & "\efi", 1)
-			If FileExists(@ScriptDir & "\UEFI_MAN\grub_a1") Then
+			If FileExists(@ScriptDir & "\UEFI_MAN\grub_a1") And GUICtrlRead($Add_Grub2_Sys) = $GUI_CHECKED Then
 				DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\x86_64-efi", $TargetDrive & "\grub\x86_64-efi", 1)
 				DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\i386-efi", $TargetDrive & "\grub\i386-efi", 1)
-;~ 				DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\locale", $TargetDrive & "\grub\locale", 1)
-;~ 				DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\fonts", $TargetDrive & "\grub\fonts", 1)
+ 				DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\locale", $TargetDrive & "\grub\locale", 1)
+ 				DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\fonts", $TargetDrive & "\grub\fonts", 1)
 			EndIf
 			;	If FileExists(@ScriptDir & "\UEFI_MAN\grub2") Then
 			;		GUICtrlSetData($ProgressAll, 85)
@@ -1028,11 +1045,13 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 			DirCopy(@ScriptDir & "\UEFI_MAN\grub_mbr_cfg", $TargetDrive & "\grub", 1)
 		EndIf
 		; MBR BIOS mode Grub2 System support
-		If Not FileExists($TargetDrive & "\grub\i386-pc") Or Not FileExists($TargetDrive & "\grub\fonts") And FileExists(@ScriptDir & "\UEFI_MAN\grub_a1") Then
+		If $g2_inst = 0 Or GUICtrlRead($Add_Grub2_Sys) = $GUI_CHECKED And Not FileExists($TargetDrive & "\grub\i386-pc") And FileExists(@ScriptDir & "\UEFI_MAN\grub_a1") Then
 			_GUICtrlStatusBar_SetText($hStatus," Adding MBR BIOS a1ive Grub2 System - wait .... ", 0)
 			DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\i386-pc", $TargetDrive & "\grub\i386-pc", 1)
-			DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\locale", $TargetDrive & "\grub\locale", 1)
-			DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\fonts", $TargetDrive & "\grub\fonts", 1)
+			If Not FileExists($TargetDrive & "\grub\fonts") Then
+				DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\locale", $TargetDrive & "\grub\locale", 1)
+				DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\fonts", $TargetDrive & "\grub\fonts", 1)
+			EndIf
 		EndIf
 		If Not FileExists($TargetDrive & "\iso") And FileExists(@ScriptDir & "\UEFI_MAN\iso") Then DirCopy(@ScriptDir & "\UEFI_MAN\iso", $TargetDrive & "\iso", 1)
 		; make folder images for Linux ISO files
@@ -1050,6 +1069,7 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 		;		_bcd_grub2win()
 		;	EndIf
 	Else
+		GUICtrlSetState($Add_Grub2_Sys, $GUI_DISABLE + $GUI_UNCHECKED)
 		GUICtrlSetState($refind, $GUI_UNCHECKED + $GUI_DISABLE)
 	EndIf
 
