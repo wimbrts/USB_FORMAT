@@ -2,9 +2,9 @@
 #cs ----------------------------------------------------------------------------
 
 AutoIt Version: 3.3.14.5
- Author:        WIMB  -  December 16, 2020
+ Author:        WIMB  -  December 23, 2020
 
- Program:       USB_FORMAT_x64.exe - Version 5.1 in rule 127
+ Program:       USB_FORMAT_x64.exe - Version 5.2 in rule 127
 
  Script Function
 	can be used to Format USB Drive for Booting with Windows Boot Manager Menu and /or Grub2 Boot Manager in MBR BIOS or UEFI mode and
@@ -64,9 +64,9 @@ Global $inst_disk="", $inst_part="", $disk_size="", $vol_size="", $disk_GB = 15,
 Global $bcdedit="", $winload = "winload.exe", $bcd_guid_outfile = "makebt\bs_temp\pe_guid.txt", $store = "", $WinLang = "en-US", $vhdfile_name = "Win10x64.vhd"
 Global $sdi_guid_outfile = "makebt\bs_temp\sdi_guid.txt"
 
-Global $str = "", $bt_files[18] = ["\makebt\listusbdrives\ListUsbDrives.exe", "\makebt\grldr.mbr", "\makebt\grldr", "\makebt\menu.lst", "\makebt\menu_Win_ISO.lst", _
+Global $str = "", $bt_files[19] = ["\makebt\listusbdrives\ListUsbDrives.exe", "\makebt\grldr.mbr", "\makebt\grldr", "\makebt\menu.lst", "\makebt\menu_Win_ISO.lst", _
 "\makebt\menu_Linux.lst", "\UEFI_MAN\efi", "\UEFI_MAN\efi_mint", "\makebt\Linux_ISO_Files.txt", "\makebt\grub.exe", _
-"\UEFI_MAN\EFI\grub\menu.lst", "\UEFI_MAN\grub\grub.cfg", "\UEFI_MAN\grub\grub_Linux.cfg", "\UEFI_MAN\grub\core.img", _
+"\UEFI_MAN\EFI\grub\menu.lst", "\UEFI_MAN\grub\grub.cfg", "\UEFI_MAN\grub\grub_Linux.cfg", "\UEFI_MAN\grub\core.img", "\UEFI_MAN\EFI\grub\ntfs_x64.efi", _
 "\UEFI_MAN\EFI\Boot\bootx64_g4d.efi", "\UEFI_MAN\EFI\Boot\bootia32_g4d.efi", "\UEFI_MAN\EFI\Boot\grubx64_real.efi", "\UEFI_MAN\EFI\Boot\grubia32_real.efi"]
 
 ;~ 	If @OSArch <> "X86" Then
@@ -124,9 +124,9 @@ $hGuiParent = GUICreate(" USB_FORMAT x64 - Tool to Make Bootable USB Drive", 400
 GUISetOnEvent($GUI_EVENT_CLOSE, "_Quit")
 
 If $PE_flag = 1 Then
-	GUICtrlCreateGroup("USB FORMAT - Version 5.1  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware & "  PE", 18, 10, 364, 150)
+	GUICtrlCreateGroup("USB FORMAT - Version 5.2  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware & "  PE", 18, 10, 364, 150)
 Else
-	GUICtrlCreateGroup("USB FORMAT - Version 5.1  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 150)
+	GUICtrlCreateGroup("USB FORMAT - Version 5.2  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 150)
 EndIf
 
 GUICtrlCreateLabel( "1 - Format USB Drive with MBR and 2 Partitions FAT32 + NTFS", 32, 37)
@@ -143,10 +143,11 @@ GUICtrlSetTip($Combo_2nd, " Only for Windows 10 and Removable Devices " _
 & @CRLF & " FAT32 MAX = 32 GB   MIN = 1 GB   Rest = NTFS")
 
 $Add_Grub2_Sys = GUICtrlCreateCheckbox("", 204, 185, 17, 17)
-GUICtrlSetTip($Add_Grub2_Sys, " Add Grub2 System Folder 12 MB - 1000 Files Often Unneeded " _
+GUICtrlSetTip($Add_Grub2_Sys, " Add a1ive Grub2 System Folder 12 MB - 1000 Files Often Unneeded " _
 & @CRLF & "    x64     UEFI - Add grub\x86_64-efi " _
 & @CRLF & "    ia32    UEFI - Add grub\i386-efi " _
-& @CRLF & " Legacy MBR - Add grub\i386-pc ")
+& @CRLF & " Legacy MBR - Add grub\i386-pc " _
+& @CRLF & " Grub2 System Not available in case of Mint UEFI ")
 GUICtrlCreateLabel( "Add Grub2 System Folder", 228, 187)
 
 $refind = GUICtrlCreateCheckbox("", 204, 210, 17, 17)
@@ -158,8 +159,7 @@ GUICtrlSetTip($refind, " Add Grub2 Boot Manager for UEFI and MBR mode and Linux 
 GUICtrlCreateLabel( "Grub2 Mgr", 328, 212)
 $Combo_EFI = GUICtrlCreateCombo("", 228, 209, 90, 24, $CBS_DROPDOWNLIST)
 
-If Not FileExists(@ScriptDir & "\UEFI_MAN\grub_a1\grub-install.exe") Or Not FileExists(@ScriptDir & "\UEFI_MAN\grub_mbr_cfg\grub.cfg") _
-		Or Not FileExists(@ScriptDir & "\UEFI_MAN\efi\boot\MokManager.efi") Then
+If Not FileExists(@ScriptDir & "\UEFI_MAN\grub_a1\grub-install.exe") Or Not FileExists(@ScriptDir & "\UEFI_MAN\efi\boot\MokManager.efi") Then
 	GUICtrlSetData($Combo_EFI,"Mint   UEFI", "Mint   UEFI")
 Else
 	GUICtrlSetData($Combo_EFI,"Mint   UEFI|Super UEFI|Mint + MBR|Super + MBR|MBR  Only", "Super UEFI")
@@ -985,8 +985,8 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 			If FileExists($TargetDrive & "\efi\boot\bootx64.efi") And Not FileExists($TargetDrive & "\efi\boot\bootx64_win.efi") Then
 				FileMove($TargetDrive & "\efi\boot\bootx64.efi", $TargetDrive & "\efi\boot\bootx64_win.efi", 1)
 			EndIf
-			If GUICtrlRead($Combo_EFI) = "Super UEFI" Or GUICtrlRead($Combo_EFI) = "Super + MBR" And FileExists($TargetDrive & "\efi\boot\bootia32.efi") And Not FileExists($TargetDrive & "\efi\boot\org-bootia32.efi") Then
-				FileMove($TargetDrive & "\efi\boot\bootia32.efi", $TargetDrive & "\efi\boot\org-bootia32.efi", 1)
+			If GUICtrlRead($Combo_EFI) = "Super UEFI" Or GUICtrlRead($Combo_EFI) = "Super + MBR" And FileExists($TargetDrive & "\efi\boot\bootia32.efi") And Not FileExists($TargetDrive & "\efi\boot\bootia32_win.efi") Then
+				FileMove($TargetDrive & "\efi\boot\bootia32.efi", $TargetDrive & "\efi\boot\bootia32_win.efi", 1)
 			EndIf
 			If Not FileExists($TargetDrive & "\efi\microsoft\boot\bootmgfw.efi") And @OSArch = "X64" Then
 				If FileExists(@WindowsDir & "\Boot\EFI\bootmgfw.efi") And FileExists($TargetDrive & "\efi\microsoft\boot\bcd") Then
@@ -1001,9 +1001,9 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 		If GUICtrlRead($Combo_EFI) = "Mint   UEFI" Or GUICtrlRead($Combo_EFI) = "Mint + MBR" Then
 			_GUICtrlStatusBar_SetText($hStatus," Adding Linux Mint Grub2 EFI Manager - wait .... ", 0)
 			DirCopy(@ScriptDir & "\UEFI_MAN\efi_mint", $TargetDrive & "\efi", 1)
-			If FileExists($TargetDrive & "\boot\grub\grub.cfg") Then
-				FileMove($TargetDrive & "\boot\grub\grub.cfg", $TargetDrive & "\boot\grub\org-grub.cfg", 1)
-			EndIf
+			;	If FileExists($TargetDrive & "\boot\grub\grub.cfg") Then
+			;		FileMove($TargetDrive & "\boot\grub\grub.cfg", $TargetDrive & "\boot\grub\org-grub.cfg", 1)
+			;	EndIf
 			FileCopy(@ScriptDir & "\UEFI_MAN\boot\grub\grub.cfg", $TargetDrive & "\boot\grub\", 9)
 			FileCopy(@ScriptDir & "\UEFI_MAN\boot\grub\grub_Linux.cfg", $TargetDrive & "\boot\grub\", 9)
 			; If Not FileExists($TargetDrive & "\grubfm.iso") And FileExists(@ScriptDir & "\UEFI_MAN\grubfm.iso") Then FileCopy(@ScriptDir & "\UEFI_MAN\grubfm.iso", $TargetDrive & "\", 1)
@@ -1037,12 +1037,15 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 			;	& "Target Drive = " & $TargetDrive & "   HDD = " & $inst_disk & @CRLF & @CRLF & "Bus Type = " & $BusType & "   Drive Type = " & $DriveType)
 		EndIf
 
+		; Add Grub2 System not available or not needed
+		If GUICtrlRead($Combo_EFI) = "Mint   UEFI" And $g2_inst = 1 Then
+			GUICtrlSetState($Add_Grub2_Sys, $GUI_DISABLE + $GUI_UNCHECKED)
+		EndIf
+
+
 		GUICtrlSetData($ProgressAll, 90)
-		If FileExists(@ScriptDir & "\UEFI_MAN\grub_mbr_cfg") Then
-			If FileExists($TargetDrive & "\grub\grub.cfg") And Not FileExists($TargetDrive & "\grub\org-grub.cfg") Then
-				FileMove($TargetDrive & "\grub\grub.cfg", $TargetDrive & "\grub\org-grub.cfg", 1)
-			EndIf
-			DirCopy(@ScriptDir & "\UEFI_MAN\grub_mbr_cfg", $TargetDrive & "\grub", 1)
+		If FileExists(@ScriptDir & "\UEFI_MAN\grub_glim") And GUICtrlRead($Combo_EFI) <> "Mint   UEFI" Then
+			DirCopy(@ScriptDir & "\UEFI_MAN\grub_glim", $TargetDrive & "\grub", 1)
 		EndIf
 		; MBR BIOS mode Grub2 System support
 		If $g2_inst = 0 Or GUICtrlRead($Add_Grub2_Sys) = $GUI_CHECKED And Not FileExists($TargetDrive & "\grub\i386-pc") And FileExists(@ScriptDir & "\UEFI_MAN\grub_a1") Then
@@ -1053,7 +1056,7 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 				DirCopy(@ScriptDir & "\UEFI_MAN\grub_a1\fonts", $TargetDrive & "\grub\fonts", 1)
 			EndIf
 		EndIf
-		If Not FileExists($TargetDrive & "\iso") And FileExists(@ScriptDir & "\UEFI_MAN\iso") Then DirCopy(@ScriptDir & "\UEFI_MAN\iso", $TargetDrive & "\iso", 1)
+		If Not FileExists($TargetDrive & "\iso") And FileExists(@ScriptDir & "\UEFI_MAN\iso") And GUICtrlRead($Combo_EFI) <> "Mint   UEFI" Then DirCopy(@ScriptDir & "\UEFI_MAN\iso", $TargetDrive & "\iso", 1)
 		; make folder images for Linux ISO files
 		If Not FileExists($TargetDrive & "\images") Then DirCreate($TargetDrive & "\images")
 		If Not FileExists($TargetDrive & "\images\Linux_ISO_Files.txt") Then FileCopy(@ScriptDir & "\makebt\Linux_ISO_Files.txt", $TargetDrive & "\images\", 1)
@@ -1095,10 +1098,13 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 		If Not FileExists($TargetDrive & "\EFI\Boot\grubia32_real.efi") Then
 			FileCopy(@ScriptDir & "\UEFI_MAN\EFI\Boot\grubia32_real.efi", $TargetDrive & "\EFI\Boot\", 9)
 		EndIf
+		If FileExists(@ScriptDir & "\UEFI_MAN\EFI\grub\ntfs_x64.efi") And Not FileExists($TargetDrive & "\EFI\grub\ntfs_x64.efi") Then
+			FileCopy(@ScriptDir & "\UEFI_MAN\EFI\grub\ntfs_x64.efi", $TargetDrive & "\EFI\grub\ntfs_x64.efi", 9)
+		EndIf
 
 		; support UEFI Grub4dos
 		If Not FileExists($TargetDrive & "\EFI\grub\menu.lst") Then
-			FileCopy(@ScriptDir & "\UEFI_MAN\EFI\grub\menu.lst", $TargetDrive & "\EFI\grub\", 9)
+			FileCopy(@ScriptDir & "\UEFI_MAN\EFI\grub\menu.lst", $TargetDrive & "\EFI\grub\menu.lst", 9)
 		EndIf
 		If Not FileExists($TargetDrive & "\EFI\Boot\bootx64_g4d.efi") Then
 			FileCopy(@ScriptDir & "\UEFI_MAN\EFI\Boot\bootx64_g4d.efi", $TargetDrive & "\EFI\Boot\", 9)
