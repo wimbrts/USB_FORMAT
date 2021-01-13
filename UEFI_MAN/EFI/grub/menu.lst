@@ -1,6 +1,16 @@
 color white/blue  black/light-gray white/black white/black
 timeout 10
 default 0
+# Next Line Remove #  to activate ScreenShot - Use Left Ctrl + Left Alt + F12
+# load -n /EFI/grub/tools/CrScreenshotDxe.efi
+
+title Windows EFI BootManager - chainloader /EFI/Microsoft/Boot/bootmgfw.efi
+find --set-root /EFI/Microsoft/Boot/bootmgfw.efi
+chainloader /EFI/Microsoft/Boot/bootmgfw.efi
+
+title Windows EFI BootManager - chainloader /EFI/Boot/bootx64_win.efi
+find --set-root /EFI/Boot/bootx64_win.efi
+chainloader /EFI/Boot/bootx64_win.efi
 
 title Win10XPE - Find images/Win10XPE_x64.ISO
 find --set-root /images/Win10XPE_x64.ISO
@@ -15,16 +25,13 @@ title Grub2 Commandline - chainloader /efi/boot/grubx64_real.efi
 find --set-root /grub/grub.cfg
 chainloader /efi/boot/grubx64_real.efi
 
-title Return to Boot Manager
-chainloader
-
 title commandline
 commandline
 
 title Exit grub4dos
 exit_g4d
 
-title reboot
+title reboot - ScreenShot - Use Left Ctrl + Left Alt + F12
 reboot
 
 title halt
