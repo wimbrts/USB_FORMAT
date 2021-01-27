@@ -62,3 +62,15 @@ reboot
 
 title Switch Off
 halt
+
+iftitle [if exist (hd0,1)/Ubuntu.vhd.vtoy] (hd0,1)/Ubuntu.vhd.vtoy - /grub/vdiskchain
+kernel /grub/ipxe.krn vdisk=/Ubuntu.vhd.vtoy
+initrd /grub/vdiskchain
+
+iftitle [if exist (hd0,1)/Ubuntu.vdi.vtoy] (hd0,1)/Ubuntu.vdi.vtoy - /grub/vdiskchain
+kernel /grub/ipxe.krn vdisk=/Ubuntu.vdi.vtoy
+initrd /grub/vdiskchain
+
+iftitle [if exist (hd0,1)/KALI.vdi.vtoy] (hd0,1)/KALI.vdi.vtoy - /grub/vdiskchain
+kernel /grub/ipxe.krn vdisk=/KALI.vdi.vtoy
+initrd /grub/vdiskchain
