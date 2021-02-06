@@ -2,9 +2,9 @@
 #cs ----------------------------------------------------------------------------
 
 AutoIt Version: 3.3.14.5
- Author:        WIMB  -  January 27, 2021
+ Author:        WIMB  -  February 02, 2021
 
- Program:       USB_FORMAT_x86.exe - Version 5.6 in rule 127
+ Program:       USB_FORMAT_x86.exe - Version 5.7 in rule 127
 
  Script Function
 	can be used to Format USB Drive for Booting with Windows Boot Manager Menu and /or Grub2 Boot Manager in MBR BIOS or UEFI mode and
@@ -54,7 +54,7 @@ Opt("GuiOnEventMode", 1)
 Opt("TrayIconHide", 1)
 
 ; Setting variables
-Global $TargetDrive="", $ProgressAll, $hStatus, $TargetSize, $TargetFree, $FSvar="", $WinLang = "en-US", $PE_flag = 0, $Firmware = ""
+Global $TargetDrive="", $ProgressAll, $hStatus, $TargetSize, $TargetFree, $FSvar="", $WinLang = "en-US", $PE_flag = 0, $Firmware = "", $PartStyle = "MBR"
 Global $hGuiParent, $EXIT, $TargetSel, $Target, $BootLoader, $Bootmgr_Menu, $Allow_Fixed_USB, $Reversed_PartLayout, $Add_PE_Menu, $Add_VHD_Menu, $Add_Grub2_Sys
 Global $DriveType="Fixed", $usbfix=0, $bcdedit="", $refind, $Combo_EFI, $WinDir_PE="D:\Windows", $WinDir_PE_flag=0, $BusType = "", $g2_inst=1
 
@@ -124,9 +124,9 @@ $hGuiParent = GUICreate(" USB_FORMAT x86 - Tool to Make Bootable USB Drive", 400
 GUISetOnEvent($GUI_EVENT_CLOSE, "_Quit")
 
 If $PE_flag = 1 Then
-	GUICtrlCreateGroup("USB FORMAT - Version 5.6  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware & "  PE", 18, 10, 364, 150)
+	GUICtrlCreateGroup("USB FORMAT - Version 5.7  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware & "  PE", 18, 10, 364, 150)
 Else
-	GUICtrlCreateGroup("USB FORMAT - Version 5.6  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 150)
+	GUICtrlCreateGroup("USB FORMAT - Version 5.7  -   OS = " & @OSVersion & " " & @OSArch & "  " & $Firmware, 18, 10, 364, 150)
 EndIf
 
 GUICtrlCreateLabel( "1 - Format USB Drive with MBR and 2 Partitions FAT32 + NTFS", 32, 37)
@@ -316,6 +316,42 @@ Func _Quit()
     EndIf
 EndFunc   ;==> _Quit
 ;===================================================================================================
+Func _GetDrivePartitionStyle($sDrive = "C")
+    Local $tDriveLayout = DllStructCreate('dword PartitionStyle;' & _
+            'dword PartitionCount;' & _
+            'byte union[40];' & _
+            'byte PartitionEntry[8192]')
+    Local $hDrive = DllCall("kernel32.dll", "handle", "CreateFileW", _
+            "wstr", "\\.\" & $sDrive & ":", _
+            "dword", 0, _
+            "dword", 0, _
+            "ptr", 0, _
+            "dword", 3, _ ; OPEN_EXISTING
+            "dword", 0, _
+            "ptr", 0)
+    If @error Or $hDrive[0] = Ptr(-1) Then Return SetError(@error, @extended, 0) ; INVALID_HANDLE_VALUE
+    DllCall("kernel32.dll", "int", "DeviceIoControl", _
+            "hwnd", $hDrive[0], _
+            "dword", 0x00070050, _
+            "ptr", 0, _
+            "dword", 0, _
+            "ptr", DllStructGetPtr($tDriveLayout), _
+            "dword", DllStructGetSize($tDriveLayout), _
+            "dword*", 0, _
+            "ptr", 0)
+    DllCall("kernel32.dll", "bool", "CloseHandle", "handle", $hDrive[0])
+    Switch DllStructGetData($tDriveLayout, "PartitionStyle")
+        Case 0
+            Return "MBR"
+        Case 1
+            Return "GPT"
+        Case 2
+            Return "RAW"
+        Case Else
+            Return "UNKNOWN"
+    EndSwitch
+EndFunc   ;==>_GetDrivePartitionStyle
+;===================================================================================================
 Func _WinAPI_GetFirmwareEnvironmentVariable()
     DllCall("kernel32.dll", "dword", _
             "GetFirmwareEnvironmentVariableW", "wstr", "", _
@@ -427,7 +463,7 @@ Func _target_drive()
 
 		IF $DriveType <> "Removable" And GUICtrlRead($Allow_Fixed_USB) = $GUI_UNCHECKED Then
 			$valid = 0
-			MsgBox(48, "WARNING - Invalid Drive Type ", "Selected Drive Type = " & $DriveType & @CRLF _
+			MsgBox(48, "WARNING - Invalid Drive Type ", "Selected Drive Type = " & $DriveType & "    " & DriveGetType($TDrive, 3) & "    " & DriveGetType($TDrive, 2) & @CRLF _
 			& @CRLF & "Target Drive Type must be Removable USB-Stick " & @CRLF _
 			& @CRLF & "Or Select - Allow Fixed USB Drives ", 0)
 			GUICtrlSetState($TargetSel, $GUI_ENABLE + $GUI_FOCUS)
@@ -459,6 +495,8 @@ Func _target_drive()
 		; $TargetDrive = StringLeft($TargetSelect, 2)
 
 		_GUICtrlStatusBar_SetText($hStatus," Getting Drive Parameters - Wait ... ", 0)
+		$PartStyle = _GetDrivePartitionStyle(StringLeft($TargetDrive, 1))
+
 		_ListUsb()
 
 		If $inst_disk = "" Or $inst_part = "" Or $vol_size = "no media" Or $inst_part <> "1" Or $usbfix = 0 Then
@@ -466,7 +504,7 @@ Func _target_drive()
 			MsgBox(16, "  STOP - Target Drive is NOT Valid", "Target Drive is Not USB First Partition " & @CRLF & @CRLF _
 			& "More Info in Drive List makebt\usblist.txt " & @CRLF & @CRLF _
 			& "Target Drive = " & $TargetDrive & "   Device = " & $inst_disk & "   Partition = " & $inst_part & @CRLF & @CRLF _
-			& "Disk Size = " & $disk_size & "   Volume Size = " & $vol_size & @CRLF & @CRLF & "Bus Type = " & $BusType & "   Drive Type = " & $DriveType)
+			& "Disk Size = " & $disk_size & "   Volume Size = " & $vol_size & @CRLF & @CRLF & "Bus Type = " & $BusType & "   Drive Type = " & $DriveType & "    " & $PartStyle & "    " & DriveGetType($TargetDrive, 2))
 
 			$TargetDrive = ""
 			_GUICtrlStatusBar_SetText($hStatus," Select USB First Partition as Target Drive ", 0)
@@ -478,7 +516,7 @@ Func _target_drive()
 		GUICtrlSetData($TargetSize, $FSvar & "   " & Round(DriveSpaceTotal($TargetDrive) / 1024) & " GB")
 		GUICtrlSetData($TargetFree, "Disk  =  " & $disk_size)
 		GUICtrlSetData($Target_Device, "Device = " & $inst_disk & "    Partition = " & $inst_part)
-		GUICtrlSetData($Target_Type, $BusType & "   " & $DriveType)
+		GUICtrlSetData($Target_Type, $BusType & "   " & $DriveType & "    " & $PartStyle & "    " & DriveGetType($TargetDrive, 2))
 
 	EndIf
 	_GUICtrlStatusBar_SetText($hStatus," Select USB First Partition as Target Drive ", 0)
@@ -579,7 +617,7 @@ Func _ListUsb()
 
 ;~ 	MsgBox(48, "Target Drive Found", "Device Number Found in makebt\usblist.txt" & @CRLF & @CRLF _
 ;~ 	& "Target Drive = " & $TargetDrive & "   HDD = " & $inst_disk & "   PART = " & $inst_part & @CRLF & @CRLF _
-;~ 	& "Disk Size = " & $disk_size & "   Volume Size = " & $vol_size & @CRLF & @CRLF & "Bus Type = " & $BusType & "   Drive Type = " & $DriveType)
+;~ 	& "Disk Size = " & $disk_size & "   Volume Size = " & $vol_size & @CRLF & @CRLF & "Bus Type = " & $BusType & "   Drive Type = " & $DriveType & "    " & DriveGetType($TargetDrive, 2))
 
 EndFunc ;==> _ListUsb
 ;===================================================================================================
@@ -676,13 +714,15 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 	If FileExists(@ScriptDir & "\makebt\dp_temp") Then DirRemove(@ScriptDir & "\makebt\dp_temp",1)
 	If Not FileExists(@ScriptDir & "\makebt\dp_temp") Then DirCreate(@ScriptDir & "\makebt\dp_temp")
 
+	$PartStyle = _GetDrivePartitionStyle(StringLeft($TargetDrive, 1))
+
 	_ListUsb()
 
 	If $inst_disk = "" Or $inst_part = "" Or $vol_size = "no media" Or $inst_part <> "1" Or $usbfix = 0 Then
 		MsgBox(16, "  STOP - Target Drive is NOT Valid", "Target Drive is Not USB First Partition " & @CRLF & @CRLF _
 		& "More Info in Drive List makebt\usblist.txt " & @CRLF & @CRLF _
 		& "Target Drive = " & $TargetDrive & "   Device = " & $inst_disk & "   Partition = " & $inst_part & @CRLF & @CRLF _
-		& "Disk Size = " & $disk_size & "   Volume Size = " & $vol_size & @CRLF & @CRLF & "Bus Type = " & $BusType & "   Drive Type = " & $DriveType)
+		& "Disk Size = " & $disk_size & "   Volume Size = " & $vol_size & @CRLF & @CRLF & "Bus Type = " & $BusType & "   Drive Type = " & $DriveType & "    " & $PartStyle & "    " & DriveGetType($TargetDrive, 2))
 		_GUICtrlStatusBar_SetText($hStatus," Select USB First Partition as Target Drive ", 0)
 		GUICtrlSetData($ProgressAll, 0)
 		DisableMenus(0)
@@ -741,12 +781,12 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 	GUICtrlSetData($ProgressAll, 30)
 
 	If $DriveType = "Removable" And GUICtrlRead($Allow_Fixed_USB) = $GUI_UNCHECKED Then
-		$ikey = MsgBox(48+4+256, "  Erase, Partition and Format USB Drive ? ", "USB Drive = " & $TargetDrive & "   Partition = " & $inst_part & "   Disk = " & $inst_disk  & @CRLF & @CRLF _
+		$ikey = MsgBox(48+4+256, "  Erase, Partition and Format USB Drive ? ", "USB Drive = " & $TargetDrive & "   Partition = " & $inst_part & "   Disk = " & $inst_disk & "    " & $PartStyle & "    " & DriveGetType($TargetDrive, 2) & @CRLF & @CRLF _
 		& "Size = " & $disk_size & "   Bus Type = " & $BusType & "   Drive Type = " & $DriveType & @CRLF & @CRLF _
 		& "Erase, Partition and Format Target USB Drive " & $TargetDrive & " with FAT32 "	& @CRLF & @CRLF _
 		& "WARNING - All Data on Selected Drive get Lost ")
 	Else
-		$ikey = MsgBox(48+4+256, "  Erase, Partition and Format USB Drive ? ", "USB Drive = " & $TargetDrive & "   Partition = " & $inst_part & "   Disk = " & $inst_disk  & @CRLF & @CRLF _
+		$ikey = MsgBox(48+4+256, "  Erase, Partition and Format USB Drive ? ", "USB Drive = " & $TargetDrive & "   Partition = " & $inst_part & "   Disk = " & $inst_disk & "    " & $PartStyle & "    " & DriveGetType($TargetDrive, 2) & @CRLF & @CRLF _
 		& "Size = " & $disk_size & "   Bus Type = " & $BusType & "   Drive Type = " & $DriveType & @CRLF & @CRLF _
 		& "Erase, Partition and Format Target USB Drive " & $TargetDrive & " with FAT32 "	& @CRLF & @CRLF _
 		& "WARNING - All Data on Selected Drive get Lost " & @CRLF & @CRLF _
@@ -860,6 +900,8 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 
 	Sleep(1000)
 
+	$PartStyle = _GetDrivePartitionStyle(StringLeft($TargetDrive, 1))
+
 	_ListUsb()
 
 	GUICtrlSetData($ProgressAll, 60)
@@ -869,7 +911,7 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 	GUICtrlSetData($TargetSize, $FSvar & "   " & Round(DriveSpaceTotal($TargetDrive) / 1024) & " GB")
 	GUICtrlSetData($TargetFree, "Disk  =  " & $disk_size)
 	GUICtrlSetData($Target_Device, "Device = " & $inst_disk & "    Partition = " & $inst_part)
-	GUICtrlSetData($Target_Type, $BusType & "   " & $DriveType)
+	GUICtrlSetData($Target_Type, $BusType & "   " & $DriveType & "    " & $PartStyle & "    " & DriveGetType($TargetDrive, 2))
 
 	If FileExists(@ScriptDir & "\makebt\autorun.inf") Then FileCopy(@ScriptDir & "\makebt\autorun.inf", $TargetDrive & "\")
 	If FileExists(@ScriptDir & "\makebt\Uefi_Multi.ico") Then FileCopy(@ScriptDir & "\makebt\Uefi_Multi.ico", $TargetDrive & "\")
