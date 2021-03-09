@@ -2,7 +2,7 @@
 #cs ----------------------------------------------------------------------------
 
 AutoIt Version: 3.3.14.5
- Author:        WIMB  -  February 02, 2021
+ Author:        WIMB  -  February 16, 2021
 
  Program:       USB_FORMAT_x86.exe - Version 5.7 in rule 127
 
@@ -64,8 +64,8 @@ Global $inst_disk="", $inst_part="", $disk_size="", $vol_size="", $disk_GB = 15,
 Global $bcdedit="", $winload = "winload.exe", $bcd_guid_outfile = "makebt\bs_temp\pe_guid.txt", $store = "", $WinLang = "en-US", $vhdfile_name = "Win10x64.vhd"
 Global $sdi_guid_outfile = "makebt\bs_temp\sdi_guid.txt"
 
-Global $str = "", $bt_files[19] = ["\makebt\listusbdrives\ListUsbDrives.exe", "\makebt\grldr.mbr", "\makebt\grldr", "\makebt\menu.lst", "\makebt\menu_Win_ISO.lst", _
-"\makebt\menu_Linux.lst", "\UEFI_MAN\efi", "\UEFI_MAN\efi_mint", "\makebt\Linux_ISO_Files.txt", "\makebt\grub.exe", _
+Global $str = "", $bt_files[21] = ["\makebt\listusbdrives\ListUsbDrives.exe", "\makebt\grldr.mbr", "\makebt\grldr", "\makebt\menu.lst", "\makebt\menu_Win_ISO.lst", _
+"\makebt\menu_Linux.lst", "\UEFI_MAN\efi", "\UEFI_MAN\efi_mint", "\makebt\Linux_ISO_Files.txt", "\makebt\grub.exe", "\makebt\menu_distro.lst", "\UEFI_MAN\grub\grub_distro.cfg", _
 "\UEFI_MAN\EFI\grub\menu.lst", "\UEFI_MAN\grub\grub.cfg", "\UEFI_MAN\grub\grub_Linux.cfg", "\UEFI_MAN\grub\core.img", "\UEFI_MAN\EFI\grub\ntfs_x64.efi", _
 "\UEFI_MAN\EFI\Boot\bootx64_g4d.efi", "\UEFI_MAN\EFI\Boot\bootia32_g4d.efi", "\UEFI_MAN\EFI\Boot\grubx64_real.efi", "\UEFI_MAN\EFI\Boot\grubia32_real.efi"]
 
@@ -531,7 +531,7 @@ Func _ListUsb()
 		FileCopy(@ScriptDir & "\makebt\usblist.txt", @ScriptDir & "\makebt\usblist_bak.txt", 1)
 		FileDelete(@ScriptDir & "\makebt\usblist.txt")
 	EndIf
-	Sleep(1000)
+	; Sleep(1000)
 
 	RunWait(@ComSpec & " /c makebt\listusbdrives\ListUsbDrives.exe -a > makebt\usblist.txt", @ScriptDir, @SW_HIDE)
 
@@ -1048,6 +1048,7 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 			;	EndIf
 			FileCopy(@ScriptDir & "\UEFI_MAN\boot\grub\grub.cfg", $TargetDrive & "\boot\grub\", 9)
 			FileCopy(@ScriptDir & "\UEFI_MAN\boot\grub\grub_Linux.cfg", $TargetDrive & "\boot\grub\", 9)
+			FileCopy(@ScriptDir & "\UEFI_MAN\boot\grub\grub_distro.cfg", $TargetDrive & "\boot\grub\", 9)
 			; If Not FileExists($TargetDrive & "\grubfm.iso") And FileExists(@ScriptDir & "\UEFI_MAN\grubfm.iso") Then FileCopy(@ScriptDir & "\UEFI_MAN\grubfm.iso", $TargetDrive & "\", 1)
 		ElseIf GUICtrlRead($Combo_EFI) = "Super UEFI" Or GUICtrlRead($Combo_EFI) = "Super + MBR" Then
 			_GUICtrlStatusBar_SetText($hStatus," Adding Super Grub2 EFI Manager - wait .... ", 0)
@@ -1122,6 +1123,7 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 		If Not FileExists($TargetDrive & "\grldr") Then	FileCopy(@ScriptDir & "\makebt\grldr", $TargetDrive & "\", 1)
 		If Not FileExists($TargetDrive & "\grub.exe") Then FileCopy(@ScriptDir & "\makebt\grub.exe", $TargetDrive & "\", 1)
 		If Not FileExists($TargetDrive & "\menu.lst") Then FileCopy(@ScriptDir & "\makebt\menu.lst", $TargetDrive & "\", 1)
+		If Not FileExists($TargetDrive & "\menu_distro.lst") Then FileCopy(@ScriptDir & "\makebt\menu_distro.lst", $TargetDrive & "\", 1)
 		If Not FileExists($TargetDrive & "\menu_Linux.lst") Then FileCopy(@ScriptDir & "\makebt\menu_Linux.lst", $TargetDrive & "\", 1)
 		If Not FileExists($TargetDrive & "\menu_Win_ISO.lst") Then FileCopy(@ScriptDir & "\makebt\menu_Win_ISO.lst", $TargetDrive & "\", 1)
 		If Not FileExists($TargetDrive & "\grubfm.iso") And FileExists(@ScriptDir & "\UEFI_MAN\grubfm.iso") Then FileCopy(@ScriptDir & "\UEFI_MAN\grubfm.iso", $TargetDrive & "\", 1)
@@ -1139,6 +1141,7 @@ Func _USB_Format() ; Erase, Partition and Format USB Drives
 		If Not FileExists($TargetDrive & "\grub\grub.cfg") Then
 			FileCopy(@ScriptDir & "\UEFI_MAN\grub\grub.cfg", $TargetDrive & "\grub\", 9)
 			FileCopy(@ScriptDir & "\UEFI_MAN\grub\grub_Linux.cfg", $TargetDrive & "\grub\", 9)
+			FileCopy(@ScriptDir & "\UEFI_MAN\grub\grub_distro.cfg", $TargetDrive & "\grub\", 9)
 		EndIf
 		If Not FileExists($TargetDrive & "\EFI\Boot\grubx64_real.efi") Then
 			FileCopy(@ScriptDir & "\UEFI_MAN\EFI\Boot\grubx64_real.efi", $TargetDrive & "\EFI\Boot\", 9)
