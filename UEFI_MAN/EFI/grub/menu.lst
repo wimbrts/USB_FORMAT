@@ -4,6 +4,10 @@ default 0
 # Next Line Remove #  to activate ScreenShot - Use Left Ctrl + Left Alt + F12
 # load -n /EFI/grub/tools/CrScreenshotDxe.efi
 
+# Next 2 Lines Remove #  to activate Load EfiGuard - unneeded when Loaded already by Grub2
+# iftitle [if exist /EFI/grub/tools/EfiGuardDxe.efi] Load EfiGuard - Disable Windows Driver Signature Enforcement for SVBus
+# load /EFI/grub/tools/EfiGuardDxe.efi
+
 title Windows EFI BootManager - chainloader /EFI/Microsoft/Boot/bootmgfw.efi
 find --set-root /EFI/Microsoft/Boot/bootmgfw.efi
 chainloader /EFI/Microsoft/Boot/bootmgfw.efi
@@ -25,6 +29,16 @@ title Grub2 Commandline - chainloader /efi/boot/grubx64_real.efi
 find --set-root /grub/grub.cfg
 chainloader /efi/boot/grubx64_real.efi
 
+iftitle [ls (hd0,0)/images] Linux   ISO Menu - (hd0,0)/images
+set iso_drive=(hd0,0)
+find --set-root /menu_Linux.lst
+configfile /menu_Linux.lst
+
+iftitle [ls (hd0,1)/images] Linux   ISO Menu - (hd0,1)/images
+set iso_drive=(hd0,1)
+find --set-root /menu_Linux.lst
+configfile /menu_Linux.lst
+
 title commandline
 commandline
 
@@ -37,12 +51,24 @@ reboot
 title halt
 halt
 
-title VHD/10_XPE.vhd - Win10XPE Flat VHD FILEDISK 2GB for UEFI boot
-find --set-root /VHD/10_XPE.vhd
-map /VHD/10_XPE.vhd (hd)
+iftitle [if exist (hd0,1)/VHD/10_XPE.vhd] (hd0,1)/VHD/10_XPE.vhd Flat FILEDISK 2GB UEFI
+map (hd0,1)/VHD/10_XPE.vhd (hd)
 chainloader (hd-1)
 
-title VHD/10_XPE.vhd - Win10XPE Flat VHD RAMDISK 2GB for UEFI boot
-find --set-root /VHD/10_XPE.vhd
-map --mem /VHD/10_XPE.vhd (hd)
+iftitle [if exist (hd0,1)/VHD/10_XPE.vhd] (hd0,1)/VHD/10_XPE.vhd Flat RAMDISK 2GB UEFI
+map --mem (hd0,1)/VHD/10_XPE.vhd (hd)
+chainloader (hd-1)
+
+iftitle [if exist (hd0,1)/Ubuntu.vhd.vtoy] (hd0,1)/Ubuntu.vhd.vtoy - /grub/vdiskchain
+chainloader /grub/vdiskchain vdisk=/Ubuntu.vhd.vtoy
+
+iftitle [if exist (hd0,1)/Ubuntu.vdi.vtoy] (hd0,1)/Ubuntu.vdi.vtoy - /grub/vdiskchain
+chainloader /grub/vdiskchain vdisk=/Ubuntu.vdi.vtoy
+
+title Linux KALI in VHD - KALI.vdi.vtoy - /grub/vdiskchain
+chainloader /grub/vdiskchain vdisk=/KALI.vdi.vtoy
+
+title Mini-10x64.vhd - UEFI Grub4dos  SVBus  RAMDISK  - 3.8 GB
+find --set-root --ignore-floppies --ignore-cd /Mini-10x64.vhd
+map --mem --top /Mini-10x64.vhd (hd)
 chainloader (hd-1)
