@@ -87,6 +87,9 @@ configfile %iso_drive%/AIO/Menu/Linux.lst
 iftitle [if exist (hd1,0)/bootmgr] Boot Windows from first primary partition of first hard disk 
 chainloader (hd1,0)/bootmgr
 
+title Exit UEFI grub4dos
+exit_g4d
+
 title Grub4dos Menu
 configfile /menu.lst
 
