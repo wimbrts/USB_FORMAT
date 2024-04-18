@@ -11,7 +11,7 @@ VHD_Compact - Repair and Install of Windows 10/11 x64 - Windows To Go
 
 2 - After Format Copy your boot.wim to Root of USB Boot Drive
 
-UEFI_MULTI can Add VHD or PE WIM File Booting from RAMDISK
+WinNTSetup can Add Windows 10/11 x64 VHD to Boot Manager Menu
 
 USB drive Booting with Windows Boot Manager Menu in BIOS or UEFI Mode
 
